@@ -9,6 +9,7 @@ import { OrderActions } from "@/components/OrderActions";
 import { DisputeInfo, openInvoice, ShippingInfo } from "@/components/OrderCard";
 import { TrackingTimeline } from "@/components/TrackingTimeline";
 import { TaxSection } from "@/components/TaxSection";
+import { ReviewForm } from "@/components/ReviewForm";
 
 const Row = ({ label, value, cls = "", testid }) => (
   <div className={`flex justify-between text-sm ${cls}`}><span className="text-slate-600">{label}</span><span className="font-mono" data-testid={testid}>{value}</span></div>
@@ -87,6 +88,7 @@ export default function OrderDetail() {
       <ShippingInfo o={o} />
       <TrackingTimeline o={o} />
       {o.dispute && <DisputeInfo o={o} />}
+      {isBuyer && o.status === "released" && <ReviewForm source="order" refId={o.order_id} />}
       {(isBuyer || o.tax_info) && <TaxSection o={o} onSaved={setO} editable={isBuyer} />}
       <div className="grid md:grid-cols-2 gap-6 items-start">
         <div className="space-y-2 text-sm" data-testid="order-detail-history">

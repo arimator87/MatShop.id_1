@@ -11,6 +11,7 @@ import { BidForm } from "@/components/custom/BidForm";
 import { BidCard } from "@/components/custom/BidCard";
 import { ProjectProgress } from "@/components/custom/ProjectProgress";
 import { ProgressUpdateForm } from "@/components/custom/ProgressUpdateForm";
+import { ReviewForm } from "@/components/ReviewForm";
 
 const Info = ({ icon: Icon, children }) => <div className="flex items-center gap-2 text-sm text-slate-700"><Icon className="w-4 h-4 text-slate-400" />{children}</div>;
 
@@ -96,6 +97,8 @@ export default function CustomProjectDetail() {
           <MilestoneTracker milestones={p.milestones} renderAction={(m, i) => <MilestoneAction p={p} m={m} i={i} viewer={p.viewer} onChange={merge} />} />
         </section>
       )}
+
+      {p.viewer === "client" && p.status === "completed" && <ReviewForm source="project" refId={p.project_id} />}
 
       {p.viewer === "bidder" && p.status === "open" && <BidForm project={p} existing={p.bids[0]} onDone={load} />}
 

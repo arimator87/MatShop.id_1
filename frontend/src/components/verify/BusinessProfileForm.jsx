@@ -5,15 +5,17 @@ import { api, errMsg } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { ImagesField } from "@/components/ListingForm";
 import { VerifyBadge } from "@/components/verify/VerifyBadge";
+import { WORK_TYPES } from "@/lib/vendor";
 
 const inputCls = "w-full h-11 px-4 rounded-lg border border-slate-300 bg-white outline-none focus:border-amber-600 text-sm";
 const L = ({ label, children, cls = "" }) => <label className={`block space-y-1.5 ${cls}`}><span className="text-sm font-medium text-slate-700">{label}</span>{children}</label>;
-const EMPTY = { business_name: "", address: "", portfolio_url: "", photos: [], pic_name: "", pic_phone: "" };
+const EMPTY = { business_name: "", address: "", portfolio_url: "", photos: [], pic_name: "", pic_phone: "", city: "", work_types: [] };
 
 export const BusinessProfileForm = () => {
   const { user, setUser } = useAuth();
   const [f, setF] = useState({ ...EMPTY, ...(user.business_profile || {}) });
   const [busy, setBusy] = useState(false);
+  const toggle = (w) => setF({ ...f, work_types: f.work_types.includes(w) ? f.work_types.filter((x) => x !== w) : [...f.work_types, w] });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const valid = f.business_name.trim().length >= 2 && f.address.trim().length >= 5 && f.portfolio_url.trim().length >= 5
     && f.photos.length > 0 && f.pic_name.trim().length >= 2 && f.pic_phone.trim().length >= 6;
@@ -49,6 +51,15 @@ export const BusinessProfileForm = () => {
         <L label="Nama Usaha"><input required className={inputCls} value={f.business_name} onChange={set("business_name")} data-testid="profile-business-name-input" /></L>
         <L label="Link Portofolio"><input required className={inputCls} value={f.portfolio_url} onChange={set("portfolio_url")} placeholder="https://instagram.com/workshop-anda" data-testid="profile-portfolio-input" /></L>
         <L label="Alamat Workshop / Kantor" cls="sm:col-span-2"><input required className={inputCls} value={f.address} onChange={set("address")} data-testid="profile-address-input" /></L>
+        <L label="Kota"><input className={inputCls} value={f.city} onChange={set("city")} placeholder="mis. Bandung" data-testid="profile-city-input" /></L>
+        <div className="space-y-1.5"><span className="text-sm font-medium text-slate-700">Jenis Pekerjaan</span>
+          <div className="flex flex-wrap gap-2" data-testid="profile-work-types">
+            {Object.entries(WORK_TYPES).map(([k, l]) => (
+              <button type="button" key={k} onClick={() => toggle(k)} data-testid={`profile-work-type-${k}`}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${f.work_types.includes(k) ? "bg-amber-600 border-amber-600 text-white" : "border-slate-300 hover:border-slate-500"}`}>{l}</button>
+            ))}
+          </div>
+        </div>
         <L label="Nama PIC"><input required className={inputCls} value={f.pic_name} onChange={set("pic_name")} data-testid="profile-pic-name-input" /></L>
         <L label="Kontak PIC (HP / WhatsApp)"><input required className={inputCls} value={f.pic_phone} onChange={set("pic_phone")} data-testid="profile-pic-phone-input" /></L>
         <L label="Foto Hasil Pekerjaan (min. 1, maks. 10)" cls="sm:col-span-2">

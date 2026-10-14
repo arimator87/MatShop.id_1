@@ -142,6 +142,14 @@ async def seed(db):
         await db.users.update_one({"user_id": uid, "verification_status": {"$exists": False}}, {"$set": {
             "business_profile": {**prof, "submitted_at": datetime.now(timezone.utc).isoformat()},
             "verification_status": "VERIFIED"}})
+        await db.users.update_one({"user_id": uid, "business_profile.city": {"$exists": False}}, {"$set": {
+            "business_profile.city": prof["city"], "business_profile.work_types": prof["work_types"]}})
+    if await db.reviews.count_documents({"source": "seed"}) == 0:
+        now = datetime.now(timezone.utc)
+        await db.reviews.insert_many([{
+            "review_id": f"rev_seed_{i}", "vendor_id": v, "reviewer_id": "seed", "reviewer_name": n, "source": "seed",
+            "ref_id": f"seed_{i}", "subject": subj, "rating": r, "comment": c,
+            "created_at": (now - timedelta(days=i * 9 + 3)).isoformat()} for i, (v, n, subj, r, c) in enumerate(SEED_REVIEWS)])
     if await db.listings.count_documents({}) == 0:
         await insert_listings(db)
     for cat, fee in SHIP_FEES.items():
@@ -153,17 +161,33 @@ async def seed(db):
 DEMO_PROFILES = {
     "user_demo_supplier": {"business_name": "PT Material Nusantara (Workshop Cikarang)", "address": "Kawasan Industri Jababeka Blok C-12, Cikarang",
                            "portfolio_url": "https://matshop.id/portfolio/material-nusantara", "photos": [I["k1"], I["k3"]],
-                           "pic_name": "Rudi Hartono", "pic_phone": "081234500001"},
+                           "pic_name": "Rudi Hartono", "pic_phone": "081234500001",
+                           "city": "Bekasi", "work_types": ["material", "kitchen_set", "furniture"]},
     "user_demo_designer": {"business_name": "Studio Ruang Arsitek", "address": "Jl. Senopati No. 21, Jakarta Selatan",
                            "portfolio_url": "https://behance.net/studioruang", "photos": [I["living"], I["lounge"]],
-                           "pic_name": "Anisa Putri", "pic_phone": "081234500002"},
+                           "pic_name": "Anisa Putri", "pic_phone": "081234500002",
+                           "city": "Jakarta", "work_types": ["interior", "desain_3d", "arsitektur"]},
     "user_showcase_workshop": {"business_name": "Kayu Rupa Workshop", "address": "Jl. Raya Jepara KM 4, Jepara, Jawa Tengah",
                                "portfolio_url": "https://instagram.com/kayurupa.workshop", "photos": [I["k2"], I["k1"], I["chair2"], I["wood2"]],
-                               "pic_name": "Slamet Riyadi", "pic_phone": "081234500003"},
+                               "pic_name": "Slamet Riyadi", "pic_phone": "081234500003",
+                               "city": "Jepara", "work_types": ["kitchen_set", "wardrobe", "furniture"]},
     "user_showcase_interior": {"business_name": "Ruang Kita Interior & Fit-Out", "address": "Jl. Dago No. 88, Bandung",
                                "portfolio_url": "https://behance.net/ruangkita", "photos": [I["lounge"], I["living"], I["studio"], I["wp2"]],
-                               "pic_name": "Dewi Lestari", "pic_phone": "081234500004"},
+                               "pic_name": "Dewi Lestari", "pic_phone": "081234500004",
+                               "city": "Bandung", "work_types": ["fit_out", "interior", "wardrobe"]},
 }
+
+SEED_REVIEWS = [
+    ("user_showcase_workshop", "Bpk. Hendra W.", "Kitchen Set Letter L 4,2 m (HPL)", 5, "Finishing HPL sangat rapi, sambungan presisi, dan pemasangan selesai 1 hari lebih cepat dari jadwal."),
+    ("user_showcase_workshop", "Ibu Ratna S.", "Wardrobe Tanam 3 Pintu", 5, "Tim Kayu Rupa komunikatif sejak survey. Hasil sesuai gambar kerja, engsel soft-close berfungsi baik."),
+    ("user_showcase_workshop", "CV Griya Asri", "Furniture Custom Kafe 40 pcs", 4, "Kualitas kayu jati solid bagus, ada keterlambatan pengiriman 2 hari namun dikabari dengan jelas."),
+    ("user_showcase_interior", "Ibu Maya K.", "Fit-Out Apartemen 2BR 68 m2", 5, "Fit-out apartemen selesai sesuai milestone, progress foto rutin dikirim. Sangat direkomendasikan!"),
+    ("user_showcase_interior", "PT Sinar Retail", "Fit-Out Toko Retail 120 m2", 4, "Pekerjaan rapi dan sesuai RAB. Koordinasi dengan pengelola mall berjalan lancar."),
+    ("user_demo_designer", "Bpk. Arif R.", "Desain Interior 3D Render Ruang Keluarga", 5, "Render fotorealistik dan moodboard material sangat membantu kami memilih produk di MatShop."),
+    ("user_demo_designer", "Ibu Sari N.", "Gambar Kerja (DED) Rumah Tinggal", 4, "Gambar kerja detail dan siap tender, revisi ditanggapi cepat."),
+    ("user_demo_supplier", "CV Bangun Jaya", "Plywood Meranti 18 mm x 120 lembar", 5, "Harga grosir kompetitif, material sesuai spesifikasi dan dikirim tepat waktu ke proyek."),
+    ("user_demo_supplier", "Bpk. Joko P.", "Kitchen Set Minimalis 3 m", 4, "Hasil kitchen set bagus, packing aman. Semoga ke depan ada pilihan warna HPL lebih banyak."),
+]
 
 SHIP_FEES = {"plywood": 3500, "hpl": 1500, "spc": 2500, "marmer": 15000, "wallpanel": 1500, "lis": 1000, "furniture": 75000}
 

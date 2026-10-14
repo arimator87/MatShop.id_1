@@ -22,6 +22,8 @@ import Admin from "@/pages/Admin";
 import CustomProject from "@/pages/CustomProject";
 import CustomProjectRequest from "@/pages/CustomProjectRequest";
 import CustomProjectDetail from "@/pages/CustomProjectDetail";
+import VendorProfile from "@/pages/VendorProfile";
+import Portfolio from "@/pages/Portfolio";
 
 const guard = (el) => <ProtectedRoute>{el}</ProtectedRoute>;
 
@@ -44,6 +46,8 @@ function AppRouter() {
           <Route path="/pesanan/:orderId" element={guard(<OrderDetail />)} />
           <Route path="/dashboard" element={guard(<Dashboard />)} />
           <Route path="/admin" element={guard(<Admin />)} />
+          <Route path="/vendor/:id" element={<VendorProfile />} />
+          <Route path="/portofolio" element={<Portfolio />} />
           <Route path="/custom-project" element={<CustomProject />} />
           <Route path="/custom-project/ajukan" element={guard(<CustomProjectRequest />)} />
           <Route path="/custom-project/:projectId" element={guard(<CustomProjectDetail />)} />

@@ -16,6 +16,7 @@ import re
 from seed import seed
 from invoice import build_invoice
 import custom_projects
+import reviews
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -171,6 +172,8 @@ class BusinessProfileIn(BaseModel):
     photos: List[str] = Field(min_length=1, max_length=10)
     pic_name: str = Field(min_length=2)
     pic_phone: str = Field(min_length=6)
+    city: str = ""
+    work_types: List[str] = []
 
 
 class VerifyIn(BaseModel):
@@ -862,23 +865,6 @@ async def seller_stats(request: Request):
             "disputed": len([o for o in orders if o["status"] == "disputed"]), "listings": listings}
 
 
-# ---------- Public portfolios ----------
-@api.get("/portfolios")
-async def portfolios(limit: int = Query(12, le=50)):
-    docs = await db.users.find({"verification_status": "VERIFIED", "suspended": {"$ne": True},
-                                "business_profile.photos.0": {"$exists": True}}, {"_id": 0}).to_list(limit)
-    out = []
-    for u in docs:
-        bp = u["business_profile"]
-        done = await db.custom_projects.count_documents({"vendor_id": u["user_id"], "status": "completed"})
-        listings = await db.listings.count_documents({"owner_id": u["user_id"], "is_active": True})
-        out.append({"user_id": u["user_id"], "business_name": bp["business_name"], "address": bp["address"],
-                    "portfolio_url": bp["portfolio_url"], "photos": bp["photos"], "primary_role": u.get("primary_role"),
-                    "completed_projects": done, "listings": listings})
-    out.sort(key=lambda x: (-len(x["photos"]), -x["completed_projects"]))
-    return out
-
-
 # ---------- Vendor verification ----------
 VERIFY_STATUSES = ("PENDING", "VERIFIED", "REJECTED")
 
@@ -959,6 +945,8 @@ async def root():
 app.include_router(api)
 custom_projects.ctx.update(db=db, get_user=get_user)
 app.include_router(custom_projects.router)
+reviews.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify)
+app.include_router(reviews.router)
 app.add_middleware(CORSMiddleware, allow_credentials=True,
                    allow_origin_regex=".*", allow_methods=["*"], allow_headers=["*"])
 
@@ -969,6 +957,7 @@ async def startup():
     await db.listings.create_index("listing_id", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.orders.create_index("order_id", unique=True)
+    await db.reviews.create_index([("source", 1), ("ref_id", 1)], unique=True)
     try:
         await run_in_threadpool(init_storage)
     except Exception as e:
