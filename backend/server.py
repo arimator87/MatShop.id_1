@@ -17,6 +17,7 @@ from seed import seed
 from invoice import build_invoice
 import custom_projects
 import reviews
+import promos
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -948,6 +949,8 @@ custom_projects.ctx.update(db=db, get_user=get_user)
 app.include_router(custom_projects.router)
 reviews.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify)
 app.include_router(reviews.router)
+promos.ctx.update(db=db, get_user=get_user)
+app.include_router(promos.router)
 app.add_middleware(CORSMiddleware, allow_credentials=True,
                    allow_origin_regex=".*", allow_methods=["*"], allow_headers=["*"])
 
@@ -955,6 +958,7 @@ app.add_middleware(CORSMiddleware, allow_credentials=True,
 @app.on_event("startup")
 async def startup():
     await seed(db)
+    await promos.seed_promos(db)
     await db.listings.create_index("listing_id", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.orders.create_index("order_id", unique=True)

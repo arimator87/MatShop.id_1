@@ -23,7 +23,7 @@ const CatalogSection = () => {
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16" data-testid="home-catalog-section">
       <SectionHeader eyebrow="Katalog" title="Jelajahi Katalog MatShop" to={`/katalog?tab=${tab}`} testid="home-catalog-see-all" />
       <div className="mb-8"><CatalogTabs value={tab} onChange={setTab} /></div>
-      <ListingGrid items={items} loading={loading} testid="home-catalog-grid" />
+      <ListingGrid items={items} loading={loading} testid="home-catalog-grid" adPlacement="home" maxCards={8} />
     </section>
   );
 };

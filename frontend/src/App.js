@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { AuthCallback } from "@/components/AuthCallback";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { PromoPopup } from "@/components/promo/PromoPopup";
 import Home from "@/pages/Home";
 import Catalog from "@/pages/Catalog";
 import ListingDetail from "@/pages/ListingDetail";
@@ -55,6 +56,7 @@ function AppRouter() {
       </main>
       <Footer />
       <OnboardingModal />
+      <PromoPopup />
     </div>
   );
 }

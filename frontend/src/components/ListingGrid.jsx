@@ -1,6 +1,8 @@
 import { ListingCard } from "@/components/ListingCard";
+import { mixAds, SponsoredCard, useAds } from "@/components/promo/Sponsored";
 
-export const ListingGrid = ({ items, loading, testid = "listing-grid" }) => {
+export const ListingGrid = ({ items, loading, testid = "listing-grid", adPlacement, maxCards }) => {
+  const ads = useAds(adPlacement);
   if (loading)
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
@@ -13,7 +15,9 @@ export const ListingGrid = ({ items, loading, testid = "listing-grid" }) => {
     return <div data-testid={`${testid}-empty`} className="py-16 text-center text-slate-500 border border-dashed border-slate-300 rounded-xl">Belum ada item.</div>;
   return (
     <div data-testid={testid} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-      {items.map((l, i) => <ListingCard key={l.listing_id} l={l} i={i} />)}
+      {mixAds(items, ads).slice(0, maxCards).map((x) => (x.kind === "ad"
+        ? <SponsoredCard key={x.ad.ad_id} ad={x.ad} />
+        : <ListingCard key={x.l.listing_id} l={x.l} i={x.i} />))}
     </div>
   );
 };

@@ -36,6 +36,7 @@ export default function CustomProjectDetail() {
       await api.post(`/custom/projects/${p.project_id}/bids/${bid.bid_id}/accept`);
       await api.post(`/custom/projects/${p.project_id}/milestones/m1/pay`);
       toast.success("Pemenang dipilih & DP 30% ditahan di Escrow MatShop");
+      setCmp([]);
     } catch (e) { toast.error(errMsg(e)); }
     load();
   };
@@ -117,7 +118,7 @@ export default function CustomProjectDetail() {
             return <BidCard key={b.bid_id} bid={b} canAccept={p.viewer === "client" && p.status === "open"} onAccept={accept}
               compare={canCmp && { checked: on, disabled: !on && cmp.length >= 3, onToggle: () => setCmp(on ? cmp.filter((x) => x !== b.bid_id) : [...cmp, b.bid_id]) }} />;
           })}
-          {cmp.length > 0 && <CompareBar n={cmp.length} onOpen={() => setShowCmp(true)} onClear={() => setCmp([])} />}
+          {cmp.length > 0 && p.status === "open" && <CompareBar n={cmp.length} onOpen={() => setShowCmp(true)} onClear={() => setCmp([])} />}
           {showCmp && <CompareDialog bids={p.bids.filter((b) => cmp.includes(b.bid_id))} onClose={() => setShowCmp(false)} onAccept={(b) => { setShowCmp(false); accept(b); }} />}
         </section>
       )}

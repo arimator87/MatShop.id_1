@@ -36,7 +36,7 @@ export default function Catalog() {
         </div>
       </div>
       <div className="text-sm text-slate-500 mb-4 font-mono" data-testid="catalog-count">{loading ? "Memuat..." : `${items.length} item`}</div>
-      <ListingGrid items={items} loading={loading} testid="catalog-grid" />
+      <ListingGrid items={items} loading={loading} testid="catalog-grid" adPlacement="catalog" />
     </div>
   );
 }
