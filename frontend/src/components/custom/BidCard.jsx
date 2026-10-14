@@ -14,7 +14,7 @@ export const BidCard = ({ bid, canAccept, onAccept }) => {
           <div className="font-heading font-semibold">{bid.vendor_name}</div>
           <div className="flex flex-wrap items-center gap-2 my-1">
             <RatingBadge avg={bid.vendor_rating || 0} count={bid.vendor_review_count || 0} testid={`bid-rating-${bid.bid_id}`} />
-            <Link to={`/vendor/${bid.vendor_id}`} target="_blank" data-testid={`bid-vendor-profile-${bid.bid_id}`} className="text-xs font-semibold text-amber-700 hover:underline">Lihat Profil</Link>
+            <Link to={`/vendor/${bid.vendor_id}`} target="_blank" rel="noopener noreferrer" data-testid={`bid-vendor-profile-${bid.bid_id}`} className="text-xs font-semibold text-amber-700 hover:underline">Lihat Profil</Link>
           </div>
           <div className="text-xs text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {bid.duration_days} hari pengerjaan · {bid.rab_items.length} item RAB</div>
         </div>

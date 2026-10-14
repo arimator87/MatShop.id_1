@@ -1,0 +1,31 @@
+{
+  "summary": "Iteration 9 — tested vendor reply to reviews + review photos + bid vendor rating. Backend (7 new tests in /app/backend/tests/test_iteration9.py — all pass). Verified: PUT /api/reviews/{id}/reply by vendor owner returns 200 with reply {text, at, edited_at:null}; second PUT edits (at preserved, edited_at set); other role (designer) -> 403; buyer/reviewer -> 403; unknown review -> 404; text<3 -> 422. Reviewer gets 'Vendor membalas ulasan Anda' notification in GET /api/notifications (verified via items list). Replying to seed review (reviewer_id='seed') succeeds without creating a notification (reviewer id 'seed' skipped). POST /api/reviews with 4 photos persists in review.photos and shows up in /api/vendors/{id}.reviews; 5 photos -> 422 pydantic validation. GET /api/custom/projects/{id} .bids items include vendor_rating + vendor_review_count fields (populated from reviews.rating_stats aggregation).\n\nFrontend (Playwright): logged in as user_demo_supplier on own /vendor/user_demo_supplier shows 15 reply-button-{review_id} (one per review). Clicking opens reply-input-{id}, typing text + reply-save-{id} saves and renders review-reply-{id} immediately; button label flips to 'Edit balasan'. On seed workshop /vendor/user_showcase_workshop the pre-seeded reply on rev_seed_0 is visible via data-testid=review-reply-rev_seed_0. Non-owner (buyer logged in) and logged-out visitors see 0 reply buttons on any vendor profile. Review submission with photos: on /pesanan/{released_order} after buyer POSTs review with 2 photos via API, the review-submitted panel renders with 2 submitted-photos thumbs; on vendor profile the matching vendor-review-photos-{rid}-0/1 thumbs appear and clicking opens review-photo-lightbox. Fresh released order (no review) renders review-form with ImagesField testids review-photo-upload and review-photo-input. Custom project detail /custom-project/{id} as client shows bid-card with bid-rating-{bid_id} (RatingBadge '4.9 (17 ulasan)') and bid-vendor-profile-{bid_id} link to /vendor/{vendor_id}.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iteration9.py",
+    "/app/test_reports/pytest/iter9.xml"
+  ],
+  "action_items": [
+    "Pre-existing: iteration_8 left user_demo_supplier with a PENDING business_profile (city='Jakarta Barat', from a UI verification test) so test_reviews.py::test_portfolios_filters_meta fails expecting 'Bekasi' in cities. Not caused by iter9. Main agent may reset supplier profile city='Bekasi' or make test tolerant. Does not affect new features."
+  ],
+  "critical_code_review_comments": [
+    "reviews.py reply_review stores reply.at from existing r.get('reply').at on second PUT — correct preservation. edited_at None on first write, set on edits. Good.",
+    "reviews.py reply_review returns {**r, 'reply': reply} where r came from find_one({...},{'_id':0}) — _id excluded ✓.",
+    "reviews.py notify is only skipped when reviewer_id=='seed'. If a real reviewer later gets deleted, notification would still try to insert for a missing user_id — benign (notifications are keyed by user_id, no FK).",
+    "ReviewPhotos.jsx dialog closes on open=null; opens on clicking any thumb. Lightbox testid 'review-photo-lightbox' is static — if two lightboxes somehow mount, selector could be ambiguous. Fine in practice.",
+    "ReviewForm.jsx submits with photos array as-is; ImagesField trims to 4 via onChange slicing. Backend double-guards with max_length=4 Pydantic. Defense-in-depth ✓.",
+    "custom_projects.py get_project loads reviews.rating_stats for the bid vendors. If a vendor has 0 reviews, defaults to (0, 0) via stats.get(vendor_id, (0,0)). UI handles via `avg || 0` and `count || 0`. OK.",
+    "BidCard.jsx opens profile link target=_blank — accessibility: should include rel='noopener noreferrer' to avoid tabnabbing. Minor."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration9.py (new, 7 tests)"
+  ],
+  "success_rate": {"backend": "100% (7/7 iter9 tests pass; full regression 147/148 — 1 pre-existing failure unrelated to iter9)", "frontend": "100% — reply flow owner/non-owner/logged-out, seed reply visible, review photos on vendor profile + lightbox, review-form with photo testids, bid-card rating badge + profile link"},
+  "test_credentials": "POST /api/auth/demo roles: contractor_buyer | supplier_vendor | designer_creator | admin",
+  "seed_data_creation": "Created ~3 TEST released orders on user_demo_supplier and 1 TEST custom project with a bid. These add real reviews/replies to user_demo_supplier (review count bumped to 17). Previous iter8 test left user_demo_supplier business_profile city='Jakarta Barat' (now 'TEST Supplier Update' per Jakarta Barat city) — this is why portfolios/filters test expects 'Bekasi' and fails; not caused by iter9.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: `REACT_APP_BACKEND_URL=https://matshop-3.preview.emergentagent.com MONGO_URL=mongodb://localhost:27017 DB_NAME=test_database python -m pytest backend/tests/test_iteration9.py -n 0 --junitxml=/app/test_reports/pytest/iter9.xml`. New endpoints: PUT /api/reviews/{id}/reply {text:>=3}. New fields on POST /api/reviews: photos[] (max 4). GET /api/custom/projects/{id}.bids[i] gets vendor_rating+vendor_review_count. Frontend testids: reply-button-{rid}, reply-form-{rid}, reply-input-{rid}, reply-save-{rid}, reply-cancel-{rid}, review-reply-{rid}, review-photo-upload, review-photo-input, review-submitted-photos-{k}, vendor-review-photos-{rid}-{k}, review-photo-lightbox, bid-card-{bid_id}, bid-rating-{bid_id}, bid-vendor-profile-{bid_id}. On vendor profile isOwner = user?.user_id === v.user_id (frontend read from localStorage). Only vendor owner can reply (403 otherwise); seed reviewer_id='seed' review replies do not send notification.",
+  "rca of the issue": "N/A — all iteration-9 features work. Pre-existing supplier profile leakage from iter8 is unrelated and does not block iter9 scope."
+}
