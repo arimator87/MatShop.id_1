@@ -17,6 +17,7 @@ Marketplace hibrida B2B/B2C + Jasa/Aset Kreator "MatShop.id" (requested Next.js/
 
 ## Implemented (2026-06)
 - All above; tested 25/25 backend, frontend e2e passed; fixed checkout deep-link race
+- Dashboard tabs per role: Supplier [Stok Material, Pesanan Masuk]; Desainer [Aset 3D Saya, Layanan Jasa, Penjualan Digital]; Kontraktor [Pesanan Material, Aset Digital Terbeli, Status Escrow Payment]
 
 ## Backlog
 - P1: Real payment gateway (Midtrans/Xendit/Stripe), dispute flow, auto-release timer

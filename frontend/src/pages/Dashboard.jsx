@@ -8,6 +8,30 @@ import { ROLE_META, rupiah } from "@/lib/format";
 import { MyListings } from "@/components/MyListings";
 import { SellerOrders } from "@/components/SellerOrders";
 import { BuyerOrders } from "@/components/BuyerOrders";
+import { PurchasedAssets } from "@/components/PurchasedAssets";
+import { EscrowSummary } from "@/components/EscrowSummary";
+
+const MATERIAL = ["material"];
+const ASSET = ["asset"];
+const SERVICE = ["service"];
+const hasMaterial = (o) => o.items.some((i) => i.type === "material");
+
+const TAB_CONFIG = {
+  supplier_vendor: [
+    { key: "stok", label: "Stok Material", el: <MyListings types={MATERIAL} /> },
+    { key: "pesanan", label: "Pesanan Masuk", el: <SellerOrders /> },
+  ],
+  designer_creator: [
+    { key: "aset", label: "Aset 3D Saya", el: <MyListings types={ASSET} /> },
+    { key: "jasa", label: "Layanan Jasa", el: <MyListings types={SERVICE} /> },
+    { key: "penjualan", label: "Penjualan Digital", el: <SellerOrders isService /> },
+  ],
+  contractor_buyer: [
+    { key: "material", label: "Pesanan Material", el: <BuyerOrders filter={hasMaterial} /> },
+    { key: "aset", label: "Aset Digital Terbeli", el: <PurchasedAssets /> },
+    { key: "escrow", label: "Status Escrow Payment", el: <div className="space-y-6"><EscrowSummary /><BuyerOrders /></div> },
+  ],
+};
 
 const Stat = ({ icon: Icon, label, value, testid }) => (
   <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -17,35 +41,39 @@ const Stat = ({ icon: Icon, label, value, testid }) => (
   </div>
 );
 
-const SellerDash = ({ types, isService }) => {
+const SellerStats = () => {
   const [s, setS] = useState(null);
   useEffect(() => { api.get("/seller/stats").then(({ data }) => setS(data)); }, []);
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat icon={Lock} label="Dana Ditahan Escrow" value={rupiah(s?.held)} testid="stat-held" />
-        <Stat icon={Wallet} label="Dana Dirilis" value={rupiah(s?.released)} testid="stat-released" />
-        <Stat icon={Package} label="Perlu Diproses" value={s?.pending_action ?? "-"} testid="stat-pending" />
-        <Stat icon={Store} label="Listing Aktif" value={s?.listings ?? "-"} testid="stat-listings" />
-      </div>
-      <Tabs defaultValue="listings">
-        <TabsList>
-          <TabsTrigger value="listings" data-testid="dash-tab-listings">{isService ? "Etalase Jasa & Aset 3D" : "Kelola Stok & Harga"}</TabsTrigger>
-          <TabsTrigger value="orders" data-testid="dash-tab-orders">Pesanan Masuk</TabsTrigger>
-        </TabsList>
-        <TabsContent value="listings" className="mt-6"><MyListings types={types} /></TabsContent>
-        <TabsContent value="orders" className="mt-6"><SellerOrders isService={isService} /></TabsContent>
-      </Tabs>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <Stat icon={Lock} label="Dana Ditahan Escrow" value={rupiah(s?.held)} testid="stat-held" />
+      <Stat icon={Wallet} label="Dana Dirilis" value={rupiah(s?.released)} testid="stat-released" />
+      <Stat icon={Package} label="Perlu Diproses" value={s?.pending_action ?? "-"} testid="stat-pending" />
+      <Stat icon={Store} label="Listing Aktif" value={s?.listings ?? "-"} testid="stat-listings" />
     </div>
   );
 };
 
-const SUPPLIER_TYPES = ["material"];
-const DESIGNER_TYPES = ["service", "asset"];
+const RoleTabs = ({ role }) => {
+  const tabs = TAB_CONFIG[role];
+  return (
+    <Tabs key={role} defaultValue={tabs[0].key} data-testid={`dashboard-tabs-${role}`}>
+      <TabsList className="h-auto flex-wrap justify-start bg-[#F1EFE9] p-1 rounded-full">
+        {tabs.map((t) => (
+          <TabsTrigger key={t.key} value={t.key} data-testid={`dash-tab-${role}-${t.key}`}
+            className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">
+            {t.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {tabs.map((t) => <TabsContent key={t.key} value={t.key} className="mt-6">{t.el}</TabsContent>)}
+    </Tabs>
+  );
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const role = user.active_role;
+  const role = user.active_role || user.primary_role;
   if (!role) return <div className="min-h-[50vh]" />;
   const meta = ROLE_META[role];
   return (
@@ -58,14 +86,8 @@ export default function Dashboard() {
         </div>
         {role === "contractor_buyer" && <Link to="/katalog?tab=all" data-testid="dash-explore-button" className="h-11 px-6 rounded-full bg-amber-600 text-white font-semibold inline-flex items-center">Eksplorasi Material</Link>}
       </div>
-      {role === "supplier_vendor" && <SellerDash types={SUPPLIER_TYPES} />}
-      {role === "designer_creator" && <SellerDash types={DESIGNER_TYPES} isService />}
-      {role === "contractor_buyer" && (
-        <div className="space-y-4">
-          <h2 className="font-heading text-xl font-semibold">Riwayat Pesanan Escrow & Unduhan Aset</h2>
-          <BuyerOrders />
-        </div>
-      )}
+      {role !== "contractor_buyer" && <SellerStats key={role} />}
+      <RoleTabs role={role} />
     </div>
   );
 }

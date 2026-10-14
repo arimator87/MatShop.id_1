@@ -5,9 +5,10 @@ import { toast } from "sonner";
 import { api, errMsg } from "@/lib/api";
 import { OrderCard } from "@/components/OrderCard";
 
-export const BuyerOrders = () => {
+export const BuyerOrders = ({ filter }) => {
   const [orders, setOrders] = useState(null);
-  const load = useCallback(() => api.get("/orders", { params: { role: "buyer" } }).then(({ data }) => setOrders(data)), []);
+  const load = useCallback(() => api.get("/orders", { params: { role: "buyer" } })
+    .then(({ data }) => setOrders(filter ? data.filter(filter) : data)), [filter]);
   useEffect(() => { load(); }, [load]);
 
   const release = async (id) => {

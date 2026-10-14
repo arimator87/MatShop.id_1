@@ -5,7 +5,7 @@ import { api, errMsg, imgSrc } from "@/lib/api";
 import { rupiah, STATUS_META } from "@/lib/format";
 import { EscrowTimeline } from "@/components/EscrowTimeline";
 
-const downloadAsset = async (orderId, listingId) => {
+export const downloadAsset = async (orderId, listingId) => {
   try {
     const { data } = await api.get(`/orders/${orderId}/download/${listingId}`);
     window.open(data.file_url, "_blank", "noopener");
