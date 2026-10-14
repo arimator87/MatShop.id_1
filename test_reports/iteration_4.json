@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 4 — fully tested new Custom Furniture & Fit-Out Project module. Added /app/backend/tests/test_custom_projects.py (22 tests, all passing). Full regression on backend ran serially: 78 passed, 1 skipped (pre-existing auto-release skip). Playwright UI covered: homepage custom-project-banner + nav-custom-project, /custom-project calculator (type/size/finishing combinations produce correct ranges via POST /api/custom/estimate), survey redirect to /login then /custom-project/ajukan with ?type&size&finishing prefill, request form submit creates project and navigates to /custom-project/CP-* (project-detail-page). Supplier dash-tab-supplier_vendor-peluang lists opportunities (no own project, no phone, 'Menerima Penawaran' badge), bid-form with multiple rab items works, submit updates total and shows own bid. Client dash-tab-contractor_buyer-custom + peluang tabs render; project detail bid-card/bid-toggle-rab/bid-accept flow accepts bid → status 'Vendor Terpilih', milestones m1 30% / m2 40% / m3 30% (4.5M/6M/4.5M for 15M contract), cancel button disappears. milestone-pay-m1 (MOCK) marks held, toast shown. Backend milestone pytest already exercises full held→submitted→released ladder and completed status. Non-involved vendor sees 403 after award. Cancel on open project succeeds; cancel on awarded fails 400.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/custom/projects/{id}/milestones/{key}/submit", "issue": "Wrong-actor returns 422 instead of 403 when note body present but caller is client (ordering: Pydantic validates body first; still an auth bug for payloads that fail validation). Minor consistency note — proper actor case returns 403 correctly."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_custom_projects.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/pytest/custom_projects.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "custom_projects.py estimate rates match spec exactly (m lari for kitchen/wardrobe, m2 for full_interior); milestone split uses `amt - sum(prior)` for m3 so no rounding drift — good.",
+    "accept_bid correctly rejects sibling bids via update_many and sets status=awarded, vendor_id, contract_amount, accepted_bid_id, duration_days, milestones. Good.",
+    "get_project 403s non-involved users once status != open and viewer not client/vendor/admin — matches 'proyek sudah ditangani vendor lain' message. Opportunities view strips phone and excludes own projects at Mongo query level — correct.",
+    "milestone_action enforces sequential (idx-1 must be released) and actor role; however for the vendor-submit endpoint Pydantic NoteIn validation runs before user auth check, so an invalid payload from a non-vendor returns 422 instead of 403. Minor; acceptable.",
+    "cancel_project only allows status==open & owner — correct and verified.",
+    "No _id leakage anywhere; all find_one/find use {'_id': 0}. ObjectId never serialized.",
+    "custom_projects.ctx dependency-injection pattern (db + get_user injected from server) keeps module decoupled; fine but slightly non-standard — a FastAPI Depends() would be cleaner.",
+    "`photos` field accepts up to 8 URLs; upload size/content-type enforced by existing /api/uploads endpoint. No duplicate upload code — good reuse."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_custom_projects.py (new, 22 tests)",
+    "/app/test_reports/pytest/custom_projects.xml",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "success_rate": {"backend": "100% (78/79 passed, 1 pre-existing skip)", "frontend": "100% — all required flows (banner/nav, calc, prefill request, submit, opportunities, bid, accept, milestones, cancel) verified"},
+  "test_credentials": "POST /api/auth/demo roles: contractor_buyer, supplier_vendor, designer_creator, admin. UI buttons demo-login-{role}.",
+  "seed_data_creation": "Test created several TEST_* custom projects (CP-*) and bids; one project was awarded + m1 paid via UI. Safe to leave in DB — tagged with TEST_ prefix.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run full regression with `REACT_APP_BACKEND_URL=https://matshop-3.preview.emergentagent.com python -m pytest /app/backend/tests/ -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml` (78 tests). test_custom_projects.py covers the new module end-to-end. UI selectors used: custom-project-banner, custom-banner-{calc,request}-button, nav-custom-project, calc-type-{kitchen_set,wardrobe,full_interior}, calc-size-input, calc-finishing-{hpl,duco}, calc-range, calc-request-survey-button, request-{title,description,address,city,phone,survey-date}-input, request-estimate, request-submit-button, project-detail-page, project-cancel-button, bid-form, bid-item-N/bid-qty-N/bid-unit-N/bid-price-N/bid-add-item/bid-days-input/bid-notes-input/bid-total/bid-submit-button, bid-card-*, bid-toggle-rab-*, bid-accept-*, milestone-tracker, milestone-pay-m1, dash-tab-supplier_vendor-peluang, dash-tab-contractor_buyer-{custom,peluang}. Known iter-3 admin-redirect race on Login.jsx still open (does not affect this module).",
+  "rca of the issue": "N/A — no new bugs discovered in iteration 4."
+}
