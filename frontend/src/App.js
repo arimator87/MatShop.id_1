@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
+import { SiteProvider } from "@/context/SiteContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { OnboardingModal } from "@/components/OnboardingModal";
@@ -64,12 +65,14 @@ function AppRouter() {
 export default function App() {
   return (
     <BrowserRouter>
+      <SiteProvider>
       <AuthProvider>
         <CartProvider>
           <AppRouter />
           <Toaster position="top-right" richColors />
         </CartProvider>
       </AuthProvider>
+      </SiteProvider>
     </BrowserRouter>
   );
 }

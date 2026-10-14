@@ -7,7 +7,7 @@ import { ImagesField } from "@/components/ListingForm";
 import { DateRange, F, inputCls, schedule } from "@/components/promo/BannerManager";
 import { rupiah } from "@/lib/format";
 
-const PLACES = { home: "Beranda (Katalog)", catalog: "Halaman Katalog" };
+const PLACES = { home: "Beranda (Katalog)", home_sections: "Beranda (Section Lain & Strip)", catalog: "Halaman Katalog", dashboard: "Dashboard Pengguna" };
 const EMPTY = { ad_type: "brand", vendor_id: null, title: "", advertiser: "", image: "", description: "", link_url: "", cta: "Lihat Promo", placements: ["home", "catalog"], active: true, start_date: null, end_date: null, contract_value: 0, paid: false, payment_note: "" };
 const strip = ({ ad_id, clicks, created_at, updated_at, notified_at, vendor, ...body }) => body;
 const TYPES = { brand: "Brand Umum", vendor: "Vendor MatShop" };
@@ -50,7 +50,7 @@ const AdForm = ({ init, vendors, onSaved, onCancel }) => {
       <F label="Deskripsi singkat (opsional)" cls="sm:col-span-2"><input className={inputCls} value={f.description} onChange={set("description")} maxLength={200} data-testid="ad-description-input" /></F>
       <F label="Tautan (opsional)"><input className={inputCls} value={f.link_url} onChange={set("link_url")} placeholder={isVendor ? "Kosong = buka profil vendor" : "Kosong = kartu hanya informasi"} data-testid="ad-link-input" /></F>
       <F label="Teks tombol"><input className={inputCls} value={f.cta} onChange={set("cta")} maxLength={30} data-testid="ad-cta-input" /></F>
-      <F label={isVendor ? "Gambar iklan (opsional — kosong = foto portofolio vendor)" : "Gambar iklan (rasio 4:3)"} cls="sm:col-span-2"><ImagesField images={f.image ? [f.image] : []} onChange={(x) => setF({ ...f, image: x[x.length - 1] || "" })} testid="ad-image" /></F>
+      <F label={isVendor ? "Gambar iklan (opsional, 1200 × 900 px / 4:3 — kosong = foto portofolio vendor)" : "Gambar iklan — 1200 × 900 px (4:3), JPG/PNG/WebP maks. 2 MB"} cls="sm:col-span-2"><ImagesField images={f.image ? [f.image] : []} onChange={(x) => setF({ ...f, image: x[x.length - 1] || "" })} testid="ad-image" /></F>
       <div className="space-y-1.5"><span className="text-sm font-medium text-slate-700">Penempatan</span>
         <div className="flex flex-wrap gap-2">{Object.entries(PLACES).map(([k, l]) => (
           <button type="button" key={k} onClick={() => togglePlace(k)} data-testid={`ad-place-${k}`}
@@ -114,7 +114,7 @@ export const AdManager = () => {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="font-heading text-lg font-semibold">In-Feed Ads · Iklan Produk Sponsor</h3>
-          <p className="text-xs text-slate-500">Kartu "Sponsor" disisipkan setiap 4 produk. Untuk brand umum atau vendor MatShop yang membayar iklan; vendor ber-iklan juga mendapat label Sponsor di kartu portofolionya.</p>
+          <p className="text-xs text-slate-500">Kartu "Sponsor" disisipkan di grid produk (Katalog, Beranda) dan strip lebar (Beranda Section Lain, Dashboard Pengguna). Untuk brand umum atau vendor MatShop yang membayar iklan; vendor ber-iklan juga mendapat label Sponsor di kartu portofolionya.</p>
         </div>
         {!editing && <button onClick={() => setEditing(EMPTY)} data-testid="ad-new" className="h-10 px-5 rounded-full bg-[#1E242B] text-white text-sm font-semibold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Iklan Baru</button>}
       </div>

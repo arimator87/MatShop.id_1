@@ -7,7 +7,7 @@ import reviews
 
 router = APIRouter(prefix="/api")
 ctx = {}
-PLACEMENTS = ("home", "catalog")
+PLACEMENTS = ("home", "home_sections", "catalog", "dashboard")
 WIB = timezone(timedelta(hours=7))
 
 
@@ -206,6 +206,8 @@ async def delete_ad(ad_id: str, request: Request):
 
 
 async def seed_promos(database):
+    await database.ads.update_many({"ad_id": {"$in": ["ad_demo_cat", "ad_demo_vendor"]}, "placements_v2": {"$exists": False}},
+                                   {"$addToSet": {"placements": {"$each": ["home_sections", "dashboard"]}}, "$set": {"placements_v2": True}})
     await database.ads.update_many({"ad_type": {"$exists": False}}, {"$set": {
         "ad_type": "brand", "vendor_id": None, "contract_value": 2500000, "paid": True, "payment_note": "Paket demo 1 bulan", "notified_at": None}})
     if await database.banners.count_documents({}) == 0:
@@ -233,3 +235,35 @@ async def seed_promos(database):
             "advertiser": "", "image": "", "description": "Workshop Jepara berpengalaman, garansi 1 tahun.", "link_url": "", "cta": "Lihat Profil",
             "placements": ["home", "catalog"], "active": True, "start_date": None, "end_date": None, "contract_value": 1500000, "paid": True,
             "payment_note": "Transfer BCA - demo", "clicks": 0, "notified_at": None, "created_at": now_iso(), "updated_at": now_iso()})
+
+
+# ---------- Homepage / site appearance ----------
+SECTION_KEYS = ("custom_banner", "portfolio", "catalog", "ads_strip_a", "popular", "creator", "ads_strip_b", "escrow")
+
+
+class SectionIn(BaseModel):
+    key: str
+    visible: bool = True
+
+
+class SiteIn(BaseModel):
+    images: dict = {}
+    hero: dict = {}
+    sections: List[SectionIn] = []
+
+
+@router.get("/site-settings")
+async def site_settings():
+    return await db().site_settings.find_one({"_id": "home"}, {"_id": 0}) or {}
+
+
+@router.put("/admin/site-settings")
+async def save_site_settings(body: SiteIn, request: Request):
+    admin = await require_admin(request)
+    keys = [x.key for x in body.sections]
+    if body.sections and (sorted(keys) != sorted(SECTION_KEYS)):
+        raise HTTPException(400, "Daftar section tidak valid")
+    doc = {"images": {k: str(v) for k, v in body.images.items() if v}, "hero": {k: str(v)[:300] for k, v in body.hero.items() if v},
+           "sections": [x.model_dump() for x in body.sections], "updated_by": admin.name, "updated_at": now_iso()}
+    await db().site_settings.update_one({"_id": "home"}, {"$set": doc}, upsert=True)
+    return doc

@@ -37,7 +37,7 @@ const BannerForm = ({ init, onSaved, onCancel }) => {
   return (
     <form onSubmit={submit} className="bg-white rounded-xl border border-slate-200 p-6 space-y-4" data-testid="banner-form">
       <F label="Nama banner (internal)"><input className={inputCls} value={f.name} onChange={set("name")} placeholder="mis. Promo Akhir Tahun" data-testid="banner-name-input" /></F>
-      <F label="Gambar pop-up (disarankan rasio 2:3 / portrait)">
+      <F label="Gambar pop-up — 800 × 1200 px (2:3 portrait), JPG/PNG/WebP maks. 2 MB">
         <ImagesField images={f.image ? [f.image] : []} onChange={(x) => setF({ ...f, image: x[x.length - 1] || "" })} testid="banner-image" />
       </F>
       <F label="Tautan saat diklik (opsional — kosongkan jika hanya informasi)">

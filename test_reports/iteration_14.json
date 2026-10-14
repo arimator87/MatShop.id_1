@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 14 - In-Feed Ads enhancement (brand vs vendor type, manual payment Lunas/Belum Lunas, vendor notification, portfolio sponsored). Backend: 11/11 new pytest cases in /app/backend/tests/test_ads_iter14.py pass + previous 14/14 test_promos.py still pass. Frontend Playwright on desktop (1920): sponsored-card-ad_demo_vendor renders on home with vendor rating/badge block (sponsored-vendor-ad_demo_vendor) and data-clickable=true; clicking navigates to /vendor/user_showcase_workshop. sponsored-card-ad_demo_hardware (brand) renders on /katalog with data-clickable=true (seed has link). portfolio-sponsored-user_showcase_workshop label (SPONSOR) renders on home PortfolioSection and /portofolio page. Admin /admin -> admin-tab-promo exposes ad-manager, ad-new; AdForm exposes ad-type-brand / ad-type-vendor toggle, ad-advertiser-input (brand), ad-vendor-select (after switching to vendor), ad-link-input (optional), ad-contract-input, ad-paid-switch, ad-payment-note-input, ad-title-input, ad-image-upload, ad-save. ad-paid-ad_demo_vendor row pill shows 'Lunas' and row text contains '● Tayang'. Backend contract: GET /api/ads strips contract_value/paid/payment_note; vendor ads include vendor {user_id, business_name, city, rating, review_count, top_rated} and image fallback to portfolio photo; invalid ad_type -> 400; vendor without/unverified vendor_id -> 400; brand without advertiser or image -> 400; link_url optional (200); unpaid ad hidden from /api/ads; vendor notification 'Iklan sponsor Anda mulai tayang' fires exactly once on create (no duplicate from subsequent /api/ads calls). GET /api/portfolios returns sponsored=true for user_showcase_workshop (has live paid vendor ad) and false for other vendors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ads_iter14.py",
+    "/app/backend/tests/test_promos.py",
+    "/app/test_reports/pytest/ads_iter14.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "promos.ad_doc: brand ad validation strips advertiser via .strip() length check — but body.advertiser is NOT reassigned to the stripped value, so stored value may contain leading/trailing whitespace. Minor.",
+    "notify_live_vendor_ads is called inside GET /api/ads (public, no auth). It performs a write (sets notified_at) per request. Acceptable since notified_at prevents duplicates, but a scheduled job or firing only inside POST/PUT /admin/ads would be cleaner (currently the PUT handler already calls it, which is sufficient).",
+    "sponsored_vendor_ids() is awaited inside /api/portfolios on every request — a $distinct over ads is cheap but consider caching if ad volume grows.",
+    "AdManager.jsx mixes form state 'vendor' field (keeps vendor meta) that strip() correctly removes. ok.",
+    "Public /api/ads 'image' fallback uses bp['photos'][0] — would raise KeyError if a verified vendor's business_profile.photos is empty; VENDOR_FILTER already requires photos.0 to exist, so safe."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_ads_iter14.py"
+  ],
+  "success_rate": {"backend": "100% (11/11 new + 14/14 existing)", "frontend": "100% (all iter14 selectors + flows verified)"},
+  "test_credentials": "POST /api/auth/demo {role: admin|supplier_vendor|contractor_buyer} — see /app/memory/test_credentials.md",
+  "seed_data_creation": "No persistent test data left. Each test cleans up its own TEST_* ads. Seed state verified intact post-run: ad_demo_vendor (vendor, paid, active), ad_demo_cat (brand, paid, active), ad_demo_hardware (brand, paid, active), bnr_demo_grosir banner active.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "In-feed ads: brand type requires advertiser (>=2 chars) + image + title; vendor type requires only vendor_id (must be VERIFIED, photos>=1); /api/ads filters paid=true and schedule window; link_url optional - vendor ad without link opens /vendor/:id (handled client-side via adTarget()), brand ad without link renders non-clickable (Tag=div, data-clickable=false, no CTA). Vendor notification notified_at persists on ad doc; changing vendor_id in PUT resets notified_at so next live state fires again. Portfolio response has sponsored boolean. Portfolio page route is /portofolio (not /portfolio). Preview URL: https://matshop-3.preview.emergentagent.com (not matshop-stub).",
+  "rca of the issue": "N/A - all tested features work per spec."
+}

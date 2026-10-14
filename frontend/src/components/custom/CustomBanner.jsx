@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Calculator, Hammer } from "lucide-react";
+import { useSite } from "@/context/SiteContext";
+import { imgSrc } from "@/lib/api";
 
-const IMG = "https://images.unsplash.com/photo-1722605090433-41d1183a792d?crop=entropy&cs=srgb&fm=jpg&q=85&w=1400";
-
-export const CustomBanner = () => (
+export const CustomBanner = () => {
+  const { img } = useSite();
+  return (
   <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16" data-testid="custom-project-banner">
     <div className="relative rounded-2xl overflow-hidden bg-[#1E242B] text-white grid lg:grid-cols-12 blueprint-grid-dark">
       <div className="lg:col-span-7 p-8 sm:p-12 space-y-5 relative z-10">
@@ -22,8 +24,9 @@ export const CustomBanner = () => (
         </div>
       </div>
       <div className="lg:col-span-5 min-h-[220px]">
-        <img src={IMG} alt="Kitchen set custom" className="w-full h-full object-cover" />
+        <img src={imgSrc(img("custom_banner"))} data-testid="custom-banner-image" alt="Kitchen set custom" className="w-full h-full object-cover" />
       </div>
     </div>
   </section>
 );
+};

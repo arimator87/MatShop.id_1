@@ -14,6 +14,7 @@ import { PurchasedAssets } from "@/components/PurchasedAssets";
 import { EscrowSummary } from "@/components/EscrowSummary";
 import { MyCustomProjects, ProjectOpportunities } from "@/components/custom/ProjectLists";
 import { FavoriteVendors } from "@/components/FavoriteVendors";
+import { AdStrip } from "@/components/promo/AdStrip";
 
 const MATERIAL = ["material"];
 const ASSET = ["asset"];
@@ -109,7 +110,9 @@ export default function Dashboard() {
         </div>
       )}
       {role !== "contractor_buyer" && <SellerStats key={role} />}
+      <AdStrip placement="dashboard" slot={0} testid="dashboard-ad-top" cls="mb-8" />
       <RoleTabs role={role} />
+      <AdStrip placement="dashboard" slot={1} testid="dashboard-ad-bottom" cls="mt-12" />
     </div>
   );
 }

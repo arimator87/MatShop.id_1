@@ -8,6 +8,8 @@ import { CatalogTabs } from "@/components/CatalogTabs";
 import { ListingGrid } from "@/components/ListingGrid";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useListings } from "@/lib/useListings";
+import { useSite } from "@/context/SiteContext";
+import { AdStrip } from "@/components/promo/AdStrip";
 
 const ESCROW = [
   [Lock, "Bayar ke Escrow", "Dana Anda ditahan sistem MatShop, belum diteruskan ke penjual."],
@@ -33,7 +35,7 @@ const Popular = () => {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24" data-testid="popular-materials-section">
       <SectionHeader eyebrow="B2B · Harga Grosir" title="Material Populer untuk Kontraktor" to="/katalog?tab=all" testid="popular-see-all" />
-      <ListingGrid items={items} loading={loading} testid="popular-grid" />
+      <ListingGrid items={items} loading={loading} testid="popular-grid" adPlacement="home_sections" adEvery={2} maxCards={4} />
     </section>
   );
 };
@@ -45,7 +47,7 @@ const CreatorPicks = () => {
     <section className="mt-24 bg-[#F1EFE9] border-y border-slate-200" data-testid="creator-picks-section">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 space-y-12">
         <SectionHeader eyebrow="Desainer & Kreator Hub" title="Jasa Desain & Aset 3D Pilihan" to="/katalog?tab=services" testid="creator-see-all" />
-        <ListingGrid items={s.items} loading={s.loading} testid="services-grid" />
+        <ListingGrid items={s.items} loading={s.loading} testid="services-grid" adPlacement="home_sections" adEvery={3} maxCards={4} />
         <div className="flex items-center justify-between">
           <h3 className="font-heading text-xl font-semibold text-slate-800">Aset File 3D · .skp · D5 · FBX · Textures</h3>
           <Link to="/katalog?tab=assets" data-testid="assets-see-all" className="text-sm font-semibold text-amber-700 hover:underline">Semua aset</Link>
@@ -74,16 +76,21 @@ const EscrowStrip = () => (
   </section>
 );
 
+const Strip = ({ slot }) => (
+  <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16"><AdStrip placement="home_sections" slot={slot} testid={`home-ad-strip-${slot}`} /></section>
+);
+
+const SECTIONS = {
+  custom_banner: CustomBanner, portfolio: PortfolioSection, catalog: CatalogSection, popular: Popular,
+  creator: CreatorPicks, escrow: EscrowStrip, ads_strip_a: () => <Strip slot={0} />, ads_strip_b: () => <Strip slot={1} />,
+};
+
 export default function Home() {
+  const { sections } = useSite();
   return (
     <div data-testid="home-page">
       <Hero />
-      <CustomBanner />
-      <PortfolioSection />
-      <CatalogSection />
-      <Popular />
-      <CreatorPicks />
-      <EscrowStrip />
+      {sections.filter((s) => s.visible && SECTIONS[s.key]).map((s) => { const C = SECTIONS[s.key]; return <C key={s.key} />; })}
     </div>
   );
 }
