@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,11 @@ class ReviewIn(BaseModel):
     ref_id: str
     rating: int = Field(ge=1, le=5)
     comment: str = Field(min_length=10, max_length=1000)
+    photos: List[str] = Field(default=[], max_length=4)
+
+
+class ReplyIn(BaseModel):
+    text: str = Field(min_length=3, max_length=1000)
 
 
 def db():
@@ -108,7 +113,7 @@ async def create_review(body: ReviewIn, request: Request):
         raise HTTPException(400, "Transaksi ini sudah diulas")
     doc = {"review_id": f"rev_{uuid.uuid4().hex[:12]}", "vendor_id": vendor_id, "reviewer_id": user.user_id,
            "reviewer_name": user.name, "source": body.source, "ref_id": body.ref_id, "subject": subject,
-           "rating": body.rating, "comment": body.comment.strip(), "created_at": datetime.now(timezone.utc).isoformat()}
+           "rating": body.rating, "comment": body.comment.strip(), "photos": body.photos, "reply": None, "created_at": datetime.now(timezone.utc).isoformat()}
     await db().reviews.insert_one(dict(doc))
     await ctx["notify"](vendor_id, f"Ulasan baru ★{body.rating}", f"{user.name}: {body.comment[:80]}", f"/vendor/{vendor_id}")
     return doc
@@ -118,3 +123,19 @@ async def create_review(body: ReviewIn, request: Request):
 async def review_for_ref(ref_id: str, request: Request):
     await ctx["get_user"](request)
     return await db().reviews.find_one({"ref_id": ref_id}, {"_id": 0})
+
+
+@router.put("/reviews/{review_id}/reply")
+async def reply_review(review_id: str, body: ReplyIn, request: Request):
+    user = await ctx["get_user"](request)
+    r = await db().reviews.find_one({"review_id": review_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(404, "Ulasan tidak ditemukan")
+    if r["vendor_id"] != user.user_id:
+        raise HTTPException(403, "Hanya vendor terkait yang dapat membalas")
+    now = datetime.now(timezone.utc).isoformat()
+    reply = {"text": body.text.strip(), "at": (r.get("reply") or {}).get("at", now), "edited_at": now if r.get("reply") else None}
+    await db().reviews.update_one({"review_id": review_id}, {"$set": {"reply": reply}})
+    if r["reviewer_id"] != "seed":
+        await ctx["notify"](r["reviewer_id"], "Vendor membalas ulasan Anda", f"{user.name}: {body.text[:80]}", f"/vendor/{user.user_id}")
+    return {**r, "reply": reply}

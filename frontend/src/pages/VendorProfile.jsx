@@ -6,6 +6,9 @@ import { roleOf, WORK_TYPES } from "@/lib/vendor";
 import { useListings } from "@/lib/useListings";
 import { ListingGrid } from "@/components/ListingGrid";
 import { RatingBadge, Stars } from "@/components/Stars";
+import { ReviewPhotos } from "@/components/ReviewPhotos";
+import { ReviewReply } from "@/components/ReviewReply";
+import { useAuth } from "@/context/AuthContext";
 
 const Gallery = ({ photos }) => {
   const [i, setI] = useState(0);
@@ -28,7 +31,7 @@ const Gallery = ({ photos }) => {
 
 const Stat = ({ n, label, testid }) => <div><div className="font-heading text-2xl font-bold" data-testid={testid}>{n}</div><div className="text-xs text-slate-500">{label}</div></div>;
 
-const Reviews = ({ v }) => (
+const Reviews = ({ v, isOwner, onReply }) => (
   <section className="grid lg:grid-cols-3 gap-8" data-testid="vendor-reviews">
     <div className="space-y-3">
       <h2 className="font-heading text-xl font-semibold">Ulasan Klien</h2>
@@ -46,7 +49,9 @@ const Reviews = ({ v }) => (
         <article key={r.review_id} className="bg-white rounded-xl border border-slate-200 p-5 space-y-2" data-testid={`vendor-review-${r.review_id}`}>
           <div className="flex flex-wrap items-center justify-between gap-2"><Stars value={r.rating} /><span className="text-xs text-slate-400 font-mono">{new Date(r.created_at).toLocaleDateString("id-ID", { dateStyle: "medium" })}</span></div>
           <p className="text-slate-700 leading-relaxed">"{r.comment}"</p>
+          <ReviewPhotos photos={r.photos} testid={`vendor-review-photos-${r.review_id}`} />
           <div className="text-xs text-slate-500"><b className="text-slate-700">{r.reviewer_name}</b> · {r.subject}</div>
+          <ReviewReply r={r} isOwner={isOwner} onSaved={onReply} />
         </article>
       ))}
     </div>
@@ -75,6 +80,7 @@ const Header = ({ v }) => {
 
 export default function VendorProfile() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [v, setV] = useState(null);
   const { items, loading } = useListings({ owner: id, limit: 24 });
   useEffect(() => { api.get(`/vendors/${id}`).then(({ data }) => setV(data)).catch(() => setV(false)); }, [id]);
@@ -90,7 +96,7 @@ export default function VendorProfile() {
         <Stat n={v.listings} label="Listing aktif" />
       </div>
       <Gallery photos={v.photos} />
-      <Reviews v={v} />
+      <Reviews v={v} isOwner={user?.user_id === v.user_id} onReply={(nr) => setV({ ...v, reviews: v.reviews.map((r) => (r.review_id === nr.review_id ? nr : r)) })} />
       <section id="vendor-listings" className="space-y-4 scroll-mt-24">
         <h2 className="font-heading text-xl font-semibold">Produk & Jasa dari {v.business_name}</h2>
         {!loading && !items.length ? <div className="py-10 text-center border border-dashed rounded-xl text-slate-500">Vendor ini belum memiliki listing. Ajukan proyek custom untuk bekerja sama.</div>

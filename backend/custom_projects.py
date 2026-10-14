@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+import reviews
 
 router = APIRouter(prefix="/api/custom")
 ctx = {}
@@ -190,6 +191,9 @@ async def get_project(project_id: str, request: Request):
         bids = await db().project_bids.find({"project_id": project_id, "vendor_id": user.user_id}, {"_id": 0}).to_list(1)
         if not is_vendor:
             p.pop("phone", None)
+    stats = await reviews.rating_stats([b["vendor_id"] for b in bids])
+    for b in bids:
+        b["vendor_rating"], b["vendor_review_count"] = stats.get(b["vendor_id"], (0, 0))
     viewer = "client" if is_client else "vendor" if is_vendor else "admin" if user.is_admin else "bidder"
     return {**p, "bids": bids, "viewer": viewer}
 

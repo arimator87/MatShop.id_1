@@ -150,6 +150,9 @@ async def seed(db):
             "review_id": f"rev_seed_{i}", "vendor_id": v, "reviewer_id": "seed", "reviewer_name": n, "source": "seed",
             "ref_id": f"seed_{i}", "subject": subj, "rating": r, "comment": c,
             "created_at": (now - timedelta(days=i * 9 + 3)).isoformat()} for i, (v, n, subj, r, c) in enumerate(SEED_REVIEWS)])
+    await db.reviews.update_one({"review_id": "rev_seed_0", "reply": {"$exists": False}}, {"$set": {"reply": {
+        "text": "Terima kasih Pak Hendra! Senang kitchen set-nya sesuai harapan. Garansi engsel & rel 1 tahun berlaku ya.",
+        "at": datetime.now(timezone.utc).isoformat(), "edited_at": None}}})
     if await db.listings.count_documents({}) == 0:
         await insert_listings(db)
     for cat, fee in SHIP_FEES.items():
