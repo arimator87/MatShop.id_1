@@ -56,7 +56,7 @@ const BannerForm = ({ init, onSaved, onCancel }) => {
 
 const BannerRow = ({ b, onEdit, onToggle, onDelete }) => (
   <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-4 items-center" data-testid={`banner-row-${b.banner_id}`}>
-    <img src={imgSrc(b.image)} alt="" className="w-16 h-24 rounded-md object-cover bg-[#F1EFE9] shrink-0" />
+    <img src={b.image ? imgSrc(b.image) : undefined} alt="" className="w-16 h-24 rounded-md object-cover bg-[#F1EFE9] shrink-0" />
     <div className="flex-1 min-w-0 space-y-1 text-sm">
       <div className="font-heading font-semibold">{b.name}</div>
       <div className="text-xs text-slate-500 truncate">{b.link_url ? `Link: ${b.link_url}` : "Hanya informasi (tanpa link)"}</div>

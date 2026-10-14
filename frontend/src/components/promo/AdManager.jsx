@@ -75,7 +75,7 @@ const AdForm = ({ init, vendors, onSaved, onCancel }) => {
 
 const AdRow = ({ a, vendorName, onEdit, onToggle, onDelete }) => (
   <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-4 items-center" data-testid={`ad-row-${a.ad_id}`}>
-    <img src={imgSrc(a.image)} alt="" className="w-24 h-18 aspect-[4/3] rounded-md object-cover bg-[#F1EFE9] shrink-0" />
+    <img src={a.image ? imgSrc(a.image) : undefined} alt="" className="w-24 h-18 aspect-[4/3] rounded-md object-cover bg-[#F1EFE9] shrink-0" />
     <div className="flex-1 min-w-0 space-y-1 text-sm">
       <div className="font-heading font-semibold line-clamp-1">{a.title}</div>
       <div className="text-xs text-amber-700">{TYPES[a.ad_type || "brand"]}: {a.ad_type === "vendor" ? vendorName(a.vendor_id) : a.advertiser} · {a.placements.map((p) => PLACES[p]).join(", ")}</div>

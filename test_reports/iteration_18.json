@@ -1,0 +1,28 @@
+{
+  "summary": "Verified fix for custom.js useCustomConfig cached-Promise runtime error. Tested Custom Furniture flow (navigate to /custom-project -> click calc-request-survey-button -> /custom-project/ajukan -> back) 4x per demo role across contractor_buyer, supplier_vendor, designer_creator, admin. Zero pageerror and zero uncaught console errors. request-submit-button present on form. Admin tabs all open without crash. Broad smoke on /, /dashboard, /katalog, /portofolio, /custom-project, /admin all clean.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin -> admin-tab-promo", "issues": ["React warning: empty string passed to <img src> attribute — causes browser to re-download page. Not blocking but should pass null instead of ''."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: in admin-tab-promo image render, guard with src={url || undefined} to silence React empty-src warning."
+  ],
+  "critical_code_review_comments": [
+    "frontend/src/lib/custom.js fix is correct: cache stores resolved data, pending holds in-flight promise, catch resets pending. useState(cache) now always returns null or data (never a Promise). resetCustomConfig clears both — good for admin edits.",
+    "Minor: in useCustomConfig, if cache exists, useState initializes with it so the useEffect setCfg(cache) early-return is redundant but harmless.",
+    "Minor: unrelated — admin promo tab emits 'empty string src' React warning; should pass undefined/null when image is not set."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "test_credentials": "demo-login buttons on /login for contractor_buyer, supplier_vendor, designer_creator, admin",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Promo popup blocks login buttons on first visit — always close via [data-testid=promo-popup-close] before clicking demo-login buttons. 401 console errors on /login (auth probe) are expected and ignorable. The original 'Cannot read properties of undefined (reading find)' runtime error on CustomProject/RequestForm no longer reproduces across repeated mounts and role switches.",
+  "rca of the issue": "RCA already stated by main agent: useCustomConfig previously used useState(cache) where cache was a Promise, so on second mount cfg was a thenable rather than the resolved config, breaking downstream .find/.map in RequestForm & CustomProject. Fix separates cache (resolved data) from pending (in-flight promise) and resets pending on error. Verified by 4x repeat flow across 4 demo roles — zero pageerror."
+}
