@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, Megaphone } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, Megaphone } from "lucide-react";
+import { RatingBadge, TopRatedBadge } from "@/components/Stars";
 import { api, imgSrc } from "@/lib/api";
 import { openLink } from "@/components/promo/PromoPopup";
 
@@ -12,11 +13,15 @@ export const useAds = (placement) => {
   return ads;
 };
 
+export const adTarget = (ad) => ad.link_url || (ad.vendor ? `/vendor/${ad.vendor.user_id}` : "");
+
 export const SponsoredCard = ({ ad }) => {
   const nav = useNavigate();
-  const click = () => { api.post(`/ads/${ad.ad_id}/click`).catch(() => {}); openLink(ad.link_url, nav); };
+  const target = adTarget(ad);
+  const click = () => { if (!target) return; api.post(`/ads/${ad.ad_id}/click`).catch(() => {}); openLink(target, nav); };
+  const Tag = target ? "button" : "div";
   return (
-    <button onClick={click} data-testid={`sponsored-card-${ad.ad_id}`}
+    <Tag onClick={target ? click : undefined} data-testid={`sponsored-card-${ad.ad_id}`} data-clickable={!!target}
       className="fade-up group text-left bg-white rounded-xl border border-amber-300 overflow-hidden hover:border-amber-500 hover:-translate-y-1 transition-[transform,border-color] duration-300 flex flex-col">
       <div className="relative aspect-[4/3] bg-[#F1EFE9] overflow-hidden">
         <img src={imgSrc(ad.image)} alt={ad.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -25,12 +30,13 @@ export const SponsoredCard = ({ ad }) => {
         </span>
       </div>
       <div className="p-3 sm:p-4 flex flex-col gap-1.5 flex-1 min-w-0">
-        <div className="text-[11px] sm:text-xs text-amber-700 font-medium truncate">{ad.advertiser}</div>
+        <div className="text-[11px] sm:text-xs text-amber-700 font-medium flex items-center gap-1 min-w-0"><span className="truncate">{ad.advertiser}</span>{ad.vendor && <BadgeCheck className="w-3.5 h-3.5 text-green-600 shrink-0" />}</div>
         <h3 className="font-heading font-semibold text-sm sm:text-base text-slate-900 leading-snug line-clamp-2">{ad.title}</h3>
+        {ad.vendor && <div className="flex flex-wrap items-center gap-1.5" data-testid={`sponsored-vendor-${ad.ad_id}`}><TopRatedBadge show={ad.vendor.top_rated} /><RatingBadge avg={ad.vendor.rating} count={ad.vendor.review_count} /></div>}
         {ad.description && <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-2">{ad.description}</p>}
-        <span className="mt-auto pt-1 text-xs sm:text-sm font-semibold text-slate-900 inline-flex items-center gap-1 group-hover:text-amber-700">{ad.cta || "Lihat Promo"} <ArrowUpRight className="w-4 h-4" /></span>
+        {target && <span className="mt-auto pt-1 text-xs sm:text-sm font-semibold text-slate-900 inline-flex items-center gap-1 group-hover:text-amber-700">{ad.cta || "Lihat Promo"} <ArrowUpRight className="w-4 h-4" /></span>}
       </div>
-    </button>
+    </Tag>
   );
 };
 

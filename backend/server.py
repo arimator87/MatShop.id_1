@@ -949,7 +949,7 @@ custom_projects.ctx.update(db=db, get_user=get_user)
 app.include_router(custom_projects.router)
 reviews.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify)
 app.include_router(reviews.router)
-promos.ctx.update(db=db, get_user=get_user)
+promos.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify)
 app.include_router(promos.router)
 app.add_middleware(CORSMiddleware, allow_credentials=True,
                    allow_origin_regex=".*", allow_methods=["*"], allow_headers=["*"])

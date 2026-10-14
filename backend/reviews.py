@@ -113,6 +113,10 @@ async def portfolios(limit: int = Query(12, le=50), city: Optional[str] = None, 
     out = [await summary(d, stats) for d in docs]
     if top_rated:
         out = [x for x in out if x["top_rated"]]
+    import promos
+    sponsored = await promos.sponsored_vendor_ids()
+    for x in out:
+        x["sponsored"] = x["user_id"] in sponsored
     if sort == "rating":
         out.sort(key=lambda x: (-x["rating_avg"], -x["review_count"]))
     else:

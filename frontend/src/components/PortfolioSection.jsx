@@ -25,7 +25,10 @@ const PortfolioCard = ({ v, i }) => {
       <div className="p-5 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-amber-700"><r.icon className="w-3.5 h-3.5" />{r.label}</div>
-          <TopRatedBadge show={v.top_rated} testid={`portfolio-top-rated-${v.user_id}`} />
+          <span className="flex items-center gap-1">
+            {v.sponsored && <span className="text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500 text-[#1E242B]" data-testid={`portfolio-sponsored-${v.user_id}`}>Sponsor</span>}
+            <TopRatedBadge show={v.top_rated} testid={`portfolio-top-rated-${v.user_id}`} />
+          </span>
         </div>
         <div className="font-heading font-semibold text-lg leading-snug flex items-center gap-1.5">
           <span className="line-clamp-1">{v.business_name}</span><BadgeCheck className="w-5 h-5 text-green-600 shrink-0" />
