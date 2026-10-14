@@ -132,6 +132,10 @@ async def seed(db):
         await db.users.update_one({"user_id": u["user_id"]}, {"$set": {"enabled_roles": u["enabled_roles"]}, "$setOnInsert": {
             **{k: v for k, v in u.items() if k != "enabled_roles"}, "picture": "", "active_role": u["primary_role"],
             "created_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    for uid, prof in DEMO_PROFILES.items():
+        await db.users.update_one({"user_id": uid, "verification_status": {"$exists": False}}, {"$set": {
+            "business_profile": {**prof, "submitted_at": datetime.now(timezone.utc).isoformat()},
+            "verification_status": "VERIFIED"}})
     if await db.listings.count_documents({}) == 0:
         await insert_listings(db)
     for cat, fee in SHIP_FEES.items():
@@ -139,6 +143,15 @@ async def seed(db):
             {"type": "material", "category": cat, "shipping_fee_per_unit": {"$exists": False}},
             {"$set": {"shipping_fee_per_unit": fee, "warehouse_location": "Gudang PT Material Nusantara, Cikarang - Bekasi"}})
 
+
+DEMO_PROFILES = {
+    "user_demo_supplier": {"business_name": "PT Material Nusantara (Workshop Cikarang)", "address": "Kawasan Industri Jababeka Blok C-12, Cikarang",
+                           "portfolio_url": "https://matshop.id/portfolio/material-nusantara", "photos": [I["k1"], I["k3"]],
+                           "pic_name": "Rudi Hartono", "pic_phone": "081234500001"},
+    "user_demo_designer": {"business_name": "Studio Ruang Arsitek", "address": "Jl. Senopati No. 21, Jakarta Selatan",
+                           "portfolio_url": "https://behance.net/studioruang", "photos": [I["living"], I["lounge"]],
+                           "pic_name": "Anisa Putri", "pic_phone": "081234500002"},
+}
 
 SHIP_FEES = {"plywood": 3500, "hpl": 1500, "spc": 2500, "marmer": 15000, "wallpanel": 1500, "lis": 1000, "furniture": 75000}
 

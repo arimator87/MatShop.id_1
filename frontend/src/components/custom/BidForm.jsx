@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Lock, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errMsg } from "@/lib/api";
 import { rupiah } from "@/lib/format";
+import { useIsVerified, VerificationGate } from "@/components/verify/VerificationGate";
 
 const inputCls = "h-10 px-3 rounded-lg border border-slate-300 bg-white outline-none focus:border-amber-600 text-sm";
 const blankItem = { item: "", qty: 1, unit: "ls", price: "" };
@@ -16,6 +17,7 @@ export const BidForm = ({ project, existing, onDone }) => {
   const [notes, setNotes] = useState(existing?.notes || "");
   const [spec, setSpec] = useState(existing?.material_spec || "");
   const [busy, setBusy] = useState(false);
+  const verified = useIsVerified();
   const total = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.price) || 0), 0);
   const upd = (k, field, v) => setItems(items.map((x, j) => (j === k ? { ...x, [field]: v } : x)));
 
@@ -61,11 +63,12 @@ export const BidForm = ({ project, existing, onDone }) => {
       <label className="block space-y-1"><span className="text-xs text-slate-600">Catatan spesifikasi material (wajib)</span>
         <textarea className="w-full h-20 p-3 rounded-lg border border-slate-300 outline-none focus:border-amber-600 text-sm" value={spec} onChange={(e) => setSpec(e.target.value)}
           placeholder="Plywood meranti 18mm, HPL Taco TH-xxx, engsel Blum soft-close, top table granit hitam..." data-testid="bid-material-spec-input" /></label>
+      <VerificationGate />
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dashed pt-4">
         <div>Total RAB <span className="font-heading text-2xl font-bold ml-2" data-testid="bid-total">{rupiah(total)}</span></div>
-        <button onClick={submit} disabled={busy || total <= 0 || spec.trim().length < 5} data-testid="bid-submit-button"
+        <button onClick={submit} disabled={!verified || busy || total <= 0 || spec.trim().length < 5} data-testid="bid-submit-button"
           className="h-11 px-6 rounded-full bg-amber-600 text-white font-semibold inline-flex items-center gap-2 disabled:opacity-50">
-          {busy && <Loader2 className="w-4 h-4 animate-spin" />} {existing ? "Perbarui Penawaran" : "Kirim Penawaran"}
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />} {!verified && <Lock className="w-4 h-4" />}{existing ? "Perbarui Penawaran" : "Kirim Penawaran / Bidding"}
         </button>
       </div>
     </div>

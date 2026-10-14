@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { RequestForm } from "@/components/custom/RequestForm";
+import { VerificationGate } from "@/components/verify/VerificationGate";
 import { ArrowUpRight, MapPin, Plus } from "lucide-react";
 import { api, imgSrc } from "@/lib/api";
 import { rupiah } from "@/lib/format";
@@ -45,6 +46,7 @@ export const ProjectOpportunities = () => {
   }, []);
   return (
     <div className="space-y-10" data-testid="project-opportunities">
+      <VerificationGate testid="board-verification-warning" />
       <div className="space-y-4">
         <h3 className="font-heading text-lg font-semibold">Request Terbuka dari Klien</h3>
         <List items={open} testid="opportunities-list" empty="Belum ada request proyek terbuka."

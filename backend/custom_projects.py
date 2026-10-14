@@ -175,6 +175,8 @@ async def submit_bid(project_id: str, body: BidIn, request: Request):
     p = await load(project_id)
     if p["client_id"] == user.user_id:
         raise HTTPException(400, "Tidak bisa menawar proyek sendiri")
+    if user.verification_status != "VERIFIED":
+        raise HTTPException(403, "Profil usaha Anda harus diverifikasi oleh tim MatShop.id sebelum dapat mengajukan penawaran.")
     if p["status"] != "open":
         raise HTTPException(400, "Proyek tidak lagi menerima penawaran")
     items = [{**i.model_dump(), "subtotal": i.qty * i.price} for i in body.rab_items]

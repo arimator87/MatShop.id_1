@@ -99,6 +99,9 @@ class User(BaseModel):
     enabled_roles: List[str] = []
     active_role: Optional[str] = None
     is_admin: bool = False
+    verification_status: Optional[str] = None
+    verification_note: Optional[str] = None
+    business_profile: Optional[dict] = None
     tax_profile: Optional[Dict[str, str]] = None
 
 
@@ -157,6 +160,20 @@ class ShipIn(BaseModel):
 class DisputeIn(BaseModel):
     reason: str = Field(min_length=5)
     evidence: List[str] = Field(default=[], max_length=6)
+
+
+class BusinessProfileIn(BaseModel):
+    business_name: str = Field(min_length=2)
+    address: str = Field(min_length=5)
+    portfolio_url: str = Field(min_length=5)
+    photos: List[str] = Field(min_length=1, max_length=10)
+    pic_name: str = Field(min_length=2)
+    pic_phone: str = Field(min_length=6)
+
+
+class VerifyIn(BaseModel):
+    status: str
+    note: str = ""
 
 
 class ResolveIn(BaseModel):
@@ -838,6 +855,48 @@ async def seller_stats(request: Request):
     return {"held": held, "released": released, "orders": len([o for o in orders if o["status"] != "awaiting_payment"]),
             "pending_action": len([o for o in orders if o["status"] == "held"]),
             "disputed": len([o for o in orders if o["status"] == "disputed"]), "listings": listings}
+
+
+# ---------- Vendor verification ----------
+VERIFY_STATUSES = ("PENDING", "VERIFIED", "REJECTED")
+
+
+@api.put("/users/business-profile")
+async def save_business_profile(body: BusinessProfileIn, request: Request):
+    user = await get_user(request)
+    await db.users.update_one({"user_id": user.user_id}, {"$set": {
+        "business_profile": {**body.model_dump(), "submitted_at": now_iso()},
+        "verification_status": "PENDING", "verification_note": None}})
+    return User(**await db.users.find_one({"user_id": user.user_id}, {"_id": 0}))
+
+
+@api.get("/admin/vendors")
+async def admin_vendors(request: Request, status: str = "PENDING"):
+    await require_admin(request)
+    flt = {"business_profile": {"$ne": None}}
+    if status in VERIFY_STATUSES:
+        flt["verification_status"] = status
+    docs = await db.users.find(flt, {"_id": 0}).sort("business_profile.submitted_at", -1).to_list(500)
+    return [User(**d) for d in docs]
+
+
+@api.post("/admin/vendors/{user_id}/verify")
+async def admin_verify_vendor(user_id: str, body: VerifyIn, request: Request):
+    admin = await require_admin(request)
+    if body.status not in ("VERIFIED", "REJECTED"):
+        raise HTTPException(400, "Status tidak valid")
+    if body.status == "REJECTED" and len(body.note.strip()) < 5:
+        raise HTTPException(400, "Alasan penolakan wajib diisi")
+    res = await db.users.update_one({"user_id": user_id, "business_profile": {"$ne": None}}, {"$set": {
+        "verification_status": body.status, "verification_note": body.note or None,
+        "verified_by": admin.name, "verified_at": now_iso()}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Vendor tidak ditemukan")
+    ok = body.status == "VERIFIED"
+    await custom_projects.notify(user_id, "Profil usaha terverifikasi" if ok else "Verifikasi profil ditolak",
+                                 "Anda kini bisa mengajukan penawaran di Project Board." if ok else f"Alasan: {body.note}. Perbarui profil lalu kirim ulang.",
+                                 "/dashboard?tab=profil")
+    return User(**await db.users.find_one({"user_id": user_id}, {"_id": 0}))
 
 
 @api.get("/notifications")

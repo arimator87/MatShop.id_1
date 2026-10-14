@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { BusinessProfileForm } from "@/components/verify/BusinessProfileForm";
+import { VerifyBadge } from "@/components/verify/VerifyBadge";
 import { Lock, Package, ShieldAlert, Store, Wallet } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
@@ -17,16 +19,20 @@ const ASSET = ["asset"];
 const SERVICE = ["service"];
 const hasMaterial = (o) => o.items.some((i) => i.type === "material");
 
+const PROFILE_TAB = { key: "profil", label: "Profil Usaha & Portofolio", el: <BusinessProfileForm /> };
+
 const TAB_CONFIG = {
   supplier_vendor: [
     { key: "stok", label: "Stok Material", el: <MyListings types={MATERIAL} /> },
     { key: "pesanan", label: "Pesanan Masuk", el: <SellerOrders /> },
     { key: "peluang", label: "Project Board", el: <ProjectOpportunities /> },
+    PROFILE_TAB,
   ],
   designer_creator: [
     { key: "aset", label: "Aset 3D Saya", el: <MyListings types={ASSET} /> },
     { key: "jasa", label: "Layanan Jasa", el: <MyListings types={SERVICE} /> },
     { key: "penjualan", label: "Penjualan Digital", el: <SellerOrders isService /> },
+    PROFILE_TAB,
   ],
   contractor_buyer: [
     { key: "material", label: "Pesanan Material", el: <BuyerOrders filter={hasMaterial} /> },
@@ -34,6 +40,7 @@ const TAB_CONFIG = {
     { key: "escrow", label: "Status Escrow Payment", el: <div className="space-y-6"><EscrowSummary /><BuyerOrders /></div> },
     { key: "custom", label: "Proyek Custom Saya", el: <MyCustomProjects /> },
     { key: "peluang", label: "Project Board", el: <ProjectOpportunities /> },
+    PROFILE_TAB,
   ],
 };
 
@@ -61,8 +68,10 @@ const SellerStats = () => {
 
 const RoleTabs = ({ role }) => {
   const tabs = TAB_CONFIG[role];
+  const [sp, setSp] = useSearchParams();
+  const value = tabs.some((t) => t.key === sp.get("tab")) ? sp.get("tab") : tabs[0].key;
   return (
-    <Tabs key={role} defaultValue={tabs[0].key} data-testid={`dashboard-tabs-${role}`}>
+    <Tabs key={role} value={value} onValueChange={(v) => setSp({ tab: v }, { replace: true })} data-testid={`dashboard-tabs-${role}`}>
       <TabsList className="h-auto flex-wrap justify-start bg-[#F1EFE9] p-1 rounded-full">
         {tabs.map((t) => (
           <TabsTrigger key={t.key} value={t.key} data-testid={`dash-tab-${role}-${t.key}`}
@@ -88,6 +97,7 @@ export default function Dashboard() {
           <div className="text-xs font-mono uppercase tracking-widest text-amber-600 mb-2 flex items-center gap-2"><meta.icon className="w-4 h-4" /> Dashboard {meta.label}</div>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Halo, {user.name.split(" ")[0]}</h1>
           <p className="text-slate-600 mt-2">{meta.desc}</p>
+          {(role !== "contractor_buyer" || user.business_profile) && <div className="mt-3"><VerifyBadge status={user.verification_status} testid="dashboard-verify-badge" /></div>}
         </div>
         {role === "contractor_buyer" && <Link to="/katalog?tab=all" data-testid="dash-explore-button" className="h-11 px-6 rounded-full bg-amber-600 text-white font-semibold inline-flex items-center">Eksplorasi Material</Link>}
       </div>
