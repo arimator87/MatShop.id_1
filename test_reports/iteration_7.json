@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 7 — fully tested Progress Updates + Admin Master Workshop Takeover + Suspend/Unsuspend feature. Added /app/backend/tests/test_takeover_progress.py (23 tests, all pass). Backend covers: ProgressIn validation (422 note<3), non-executor 403, client cannot post progress 403, executor successful post returns updated progress_percent + progress_updates list + client notification created with percent in title, percent cannot decrease (400), percent can increase (200), inactive project (pending_review) → 403 since vendor_id null. Takeover: non-admin 403, reason<10 chars → 422, admin takeover transitions status→internal_takeover, swaps vendor_id→'user_master_workshop', vendor_name→'Master Workshop MatShop', keeps original_vendor_id/name, submitted milestone reverts to 'held', takeover.escrow_transferred = sum held/submitted amounts, remaining_unpaid = sum pending amounts, from_vendor_id set, client receives 'Garansi Penyelesaian Proyek MatShop' notification, defaulting supplier auto-suspended (appears in GET /api/admin/suspended-users), second takeover rejected 400. Post-takeover: admin can post progress and submit milestones acting as Master Workshop; client releases milestone; project detail still exposes original_vendor_id for original vendor view. Suspended-user cannot bid (403); POST /api/admin/users/{uid}/unsuspend restores bidding; unsuspending unknown user → 404. Full regression suite: 128 passed, 1 skipped (pre-existing auto_release skip). Playwright E2E: supplier /dashboard?tab=peluang showed won-projects-list with toggle-progress-form-{pid}; opening revealed progress-form/range/percent-input/note-input/submit; submitting 30% rendered progress-bars-{pid} with 30%. Admin /admin → admin-tab-monitor → takeover-board visible with monitor-card and takeover-btn; opening takeover-dialog, filling 10+ char reason + confirm transitioned monitor-status-{pid} to INTERNAL_TAKEOVER; red banner 'Dana escrow Rp 3.600.000 dialihkan ke Master Workshop · sisa belum dibayar Rp 8.400.000' rendered; suspended-user_demo_supplier card appeared; unsuspend-user_demo_supplier click removed from list with 'Akun diaktifkan kembali' toast. Final state verified: GET /api/admin/suspended-users returns [] — demo supplier/designer fully restored.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_takeover_progress.py",
+    "/app/backend/tests/test_vendor_verification.py",
+    "/app/backend/tests/test_custom_projects.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "custom_projects.add_progress: percent decrease check uses `p.get('progress_percent') or 0` — safely treats initial None as 0. Good.",
+    "is_executor() correctly allows admin to act as Master Workshop executor after takeover. Clean centralisation of ownership check.",
+    "ensure_active() invoked in add_progress AND milestone_action(actor='vendor') — suspension gating is consistent across all vendor-side actions.",
+    "takeover endpoint correctly reverts 'submitted' milestones to 'held' so client doesn't accidentally release funds to the suspended original vendor; escrow_ledger entry created for audit.",
+    "milestone_action preserves 'internal_takeover' status when releasing partial milestones (only switches to 'completed' when ALL released). Good state preservation.",
+    "GET /custom/projects/{id} allows p['original_vendor_id'] == user.user_id to view — original vendor retains read access post-takeover for transparency. Nice touch.",
+    "admin_unsuspend sets suspended=False AND clears suspended_reason — idempotent and clean. 404 on unknown user.",
+    "Minor: /api/admin/suspended-users returns full User list (filters only suspended=True); may want pagination for large installs but acceptable for current MVP.",
+    "Minor: takeover.info stores 'by: admin.name' (display name) — consider adding admin.user_id for stronger audit trail (same minor as iter6).",
+    "ProjectCard renders progress-bars inside both vendor and client lists; ProgressUpdateForm correctly uses project-specific testids (-{project_id}) ensuring selector uniqueness per card."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_takeover_progress.py (new, 23 tests)"
+  ],
+  "success_rate": {"backend": "100% (128 passed, 1 pre-existing skip)", "frontend": "100% — progress form, progress bars, takeover dialog, suspended list, unsuspend all verified end-to-end"},
+  "test_credentials": "POST /api/auth/demo roles: contractor_buyer | supplier_vendor | designer_creator | admin",
+  "seed_data_creation": "Tests created several TEST_ projects; demo supplier was transiently suspended during takeover tests and automatically unsuspended by test_cleanup_unsuspend_demo_users + explicit API cleanup in Playwright run. Verified GET /api/admin/suspended-users returns [] post-run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run with `REACT_APP_BACKEND_URL=https://matshop-3.preview.emergentagent.com MONGO_URL=mongodb://localhost:27017 DB_NAME=test_database python -m pytest backend/tests/ -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml`. SERIAL (-n 0) MANDATORY because test_takeover_progress.py and test_vendor_verification.py share demo user global state across classes. If adding new tests involving suspension, ALWAYS cleanup with POST /api/admin/users/{uid}/unsuspend for demo supplier/designer at end of test module (see test_cleanup_unsuspend_demo_users). Key selectors verified: toggle-progress-form-{pid}, progress-form-{pid}, progress-range-{pid}, progress-percent-input-{pid}, progress-note-input-{pid}, progress-photo-{pid}-input, progress-submit-{pid}, progress-bars-{pid}, progress-reported-{pid}, progress-milestone-{pid}, project-progress, progress-updates, progress-update-{id}, admin-tab-monitor, takeover-board, monitor-card-{pid}, monitor-status-{pid}, takeover-btn-{pid}, takeover-dialog, takeover-reason-input, takeover-confirm, suspended-users, suspended-{uid}, unsuspend-{uid}. Supplier dashboard tab for 'Proyek yang Saya Menangkan' is ?tab=peluang (not ?tab=project-board). Demo state restored.",
+  "rca of the issue": "N/A — no bugs found."
+}
