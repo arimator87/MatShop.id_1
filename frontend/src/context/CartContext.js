@@ -11,11 +11,13 @@ export const CartProvider = ({ children }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [cart, setCart] = useState(EMPTY);
+  const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!user) return setCart(EMPTY);
     const { data } = await api.get("/cart");
     setCart(data);
+    setLoaded(true);
   }, [user]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -45,7 +47,7 @@ export const CartProvider = ({ children }) => {
   const remove = (id) => call(() => api.delete(`/cart/items/${id}`));
 
   return (
-    <CartCtx.Provider value={{ cart, refresh, add, update, remove, setCart }}>{children}</CartCtx.Provider>
+    <CartCtx.Provider value={{ cart, loaded, refresh, add, update, remove, setCart }}>{children}</CartCtx.Provider>
   );
 };
 

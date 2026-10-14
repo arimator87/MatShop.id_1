@@ -18,12 +18,13 @@ const Field = ({ label, ...p }) => (
 
 export default function Checkout() {
   const { user } = useAuth();
-  const { cart, refresh } = useCart();
+  const { cart, loaded, refresh } = useCart();
   const navigate = useNavigate();
   const [f, setF] = useState({ recipient: user.name, phone: "", address: "", notes: "" });
   const [busy, setBusy] = useState(false);
   const on = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
+  if (!loaded) return <div className="min-h-[50vh]" data-testid="checkout-loading" />;
   if (cart.items.length === 0 && !busy) return <Navigate to="/keranjang" replace />;
 
   const submit = async (e) => {
