@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 5 — fully tested the new Managed Open-Bid custom-project flow. Rewrote /app/backend/tests/test_custom_projects.py (26 tests) to cover pending_review initial status, admin approve/reject with note validation, hidden-until-approved opportunities, pending cancel, material_spec requirement on bids (422 when missing or <5 chars), accept + DP 30% m1 flow, admin 403 for non-admins, approve-twice 400, auto title '<Kategori> · <Kota>', notifications on approve/bid/accept, and full m1→m2→m3 milestone ladder. Backend regression (82 passed, 1 skipped) — all green. Playwright E2E: client (contractor_buyer demo) creates Fit-Out Apartemen project via inline request form from dash-tab-contractor_buyer-custom (auto-title = 'Fit-Out Apartemen/Rumah · Jakarta Barat', status=pending_review, project-pending-banner + project-cancel-button visible), admin (/admin default tab project-review-board) approves via review-approve-{id} with review-note (POST /custom/admin/projects/{id}/approve 200), supplier dashboard shows tab label 'Project Board' (dash-tab-supplier_vendor-peluang), vendor submits bid — bid-submit-button is disabled until bid-material-spec-input ≥5 chars (good UX guard), BidCard shows bid-spec-{bidId}, client's notification-bell shows unread=2 and notification-panel opens, client accepts via bid-accept-{bidId} (confirm dialog) which chains POST /accept + POST /milestones/m1/pay — final project status in_progress, m1 held Rp 6.000.000 (= 30% of Rp 20.000.000 contract). All iteration-4 scenarios (meta, estimates, non-involved vendor 403, cancel-awarded 400) still pass.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/custom/projects/{id}/bids/{bid}/accept", "issue": "Accept endpoint sets status='awarded' and milestones[0].status='pending'; frontend must make a second POST /milestones/m1/pay to actually move to in_progress + held. Works end-to-end because CustomProjectDetail.jsx chains the two calls, but if any API consumer calls accept alone the DP is NOT taken — spec says accept should pay DP in one step. Low priority (frontend works), but consider making /accept atomically hold m1."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_custom_projects.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "custom_projects.py: ProjectIn now requires budget and makes size/finishing optional — matches spec. Auto title fallback uses WORK_TYPES[wt].label (Fit-Out label matches spec). Good.",
+    "BidIn.material_spec Field(min_length=5) correctly enforces backend requirement; BidForm.jsx mirrors with button disabled when spec.trim().length < 5. Consistent FE/BE validation.",
+    "opportunities filter {status:'open'} correctly hides pending_review / rejected / cancelled projects. Phone stripped at Mongo projection level.",
+    "accept_bid awards + creates milestones but does NOT hold DP m1 — the FE chains a second call. Non-atomic: if the second call 500s, project is 'awarded' but no escrow. Consider moving m1 hold into accept_bid transaction.",
+    "cancel_project allows cancelling status in ('open','pending_review') — matches spec (client can cancel pending). Good.",
+    "review() admin endpoint: approve note is optional, reject requires note >=5 chars enforced at endpoint level (400). Non-admin → require_admin raises 403. Correct.",
+    "Notifications: approve/reject notifies client; new bid notifies client; accept notifies vendor. GET /notifications returns {items, unread}; POST /notifications/read-all idempotent. All verified.",
+    "No MongoDB _id leakage; all find_one/find use {_id:0}."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_custom_projects.py (rewritten for iter-5, 26 tests)"
+  ],
+  "success_rate": {"backend": "100% (82 passed, 1 pre-existing skip)", "frontend": "100% — client submit → pending → admin approve → vendor bid (with material_spec) → notifications → accept + DP 30% all verified E2E"},
+  "test_credentials": "POST /api/auth/demo roles: contractor_buyer | supplier_vendor | designer_creator | admin. UI buttons demo-login-{role}.",
+  "seed_data_creation": "Playwright run created project CP-B3404D87 (Fit-Out Apt Jakarta Barat, Rp 20M contract, in_progress, m1 held). Pytest run created several TEST_* projects (rejected, approved, completed). Safe to leave — all tagged with TEST_ prefix or dedicated test city.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run with: `REACT_APP_BACKEND_URL=<url> python -m pytest /app/backend/tests/ -v -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml`. Full managed open-bid flow is working end-to-end. Key UI selectors used/verified: dash-tab-contractor_buyer-custom, my-projects-new-button, custom-request-form, request-{type-select,budget-input,description-input,address-input,city-input,phone-input,submit-button}, project-pending-banner, project-cancel-button, admin-tab-projects, project-review-board, review-filter-{pending_review|open|rejected|all}, review-card-{id}, review-note-{id}, review-approve-{id}, review-reject-{id}, dash-tab-supplier_vendor-peluang (label 'Project Board'), bid-form, bid-material-spec-input, bid-submit-button, bid-card-{id}, bid-spec-{id}, bid-accept-{id}, notification-bell, notification-count, notification-panel, notification-item-{id}, milestone-pay-m1.",
+  "rca of the issue": "N/A — no new bugs. One architectural note: accept endpoint is not atomic with DP payment; relies on FE chaining — acceptable per current design, flagged as minor."
+}
