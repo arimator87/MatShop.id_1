@@ -15,6 +15,7 @@ import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import Payment from "@/pages/Payment";
 import Orders from "@/pages/Orders";
+import OrderDetail from "@/pages/OrderDetail";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
 
@@ -36,6 +37,7 @@ function AppRouter() {
           <Route path="/checkout" element={guard(<Checkout />)} />
           <Route path="/bayar/:paymentId" element={guard(<Payment />)} />
           <Route path="/pesanan" element={guard(<Orders />)} />
+          <Route path="/pesanan/:orderId" element={guard(<OrderDetail />)} />
           <Route path="/dashboard" element={guard(<Dashboard />)} />
         </Routes>
       </main>

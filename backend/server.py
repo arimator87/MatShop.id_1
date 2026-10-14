@@ -13,6 +13,7 @@ import logging
 import requests
 
 from seed import seed
+from invoice import build_invoice
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -41,6 +42,10 @@ TABS = {
     "services": {"type": "service"},
     "assets": {"type": "asset"},
 }
+SHIP_METHODS = {"pickup": "Ambil Mandiri di Gudang Vendor", "vendor_cargo": "Pengiriman Kargo/Armada Vendor"}
+SERVICE_FEE = 2500
+AUTO_RELEASE_DAYS = 7
+CARGO_BASE_FEE = 50000
 TYPE_ROLE = {"material": "supplier_vendor", "service": "designer_creator", "asset": "designer_creator"}
 
 
@@ -110,6 +115,8 @@ class ListingIn(BaseModel):
     file_url: Optional[str] = None
     file_format: Optional[str] = None
     file_size: Optional[str] = None
+    shipping_fee_per_unit: Optional[float] = Field(default=None, ge=0)
+    warehouse_location: Optional[str] = None
 
 
 class RoleIn(BaseModel):
@@ -130,10 +137,16 @@ class CheckoutIn(BaseModel):
     phone: str = Field(min_length=6)
     address: str = Field(min_length=5)
     notes: str = ""
+    shipping: Dict[str, str] = {}
 
 
 class ShipIn(BaseModel):
     note: str = Field(min_length=2)
+    deliverable_url: Optional[str] = None
+
+
+class DisputeIn(BaseModel):
+    reason: str = Field(min_length=5)
 
 
 class SessionIn(BaseModel):
@@ -450,6 +463,16 @@ def event(status, note):
     return {"status": status, "note": note, "at": now_iso()}
 
 
+def shipping_estimate(cart_items) -> float:
+    return CARGO_BASE_FEE + sum((i["listing"].get("shipping_fee_per_unit") or 0) * i["qty"] for i in cart_items)
+
+
+@api.get("/meta/shipping")
+async def shipping_meta():
+    return {"methods": SHIP_METHODS, "cargo_base_fee": CARGO_BASE_FEE, "service_fee": SERVICE_FEE,
+            "auto_release_days": AUTO_RELEASE_DAYS}
+
+
 @api.post("/checkout")
 async def checkout(body: CheckoutIn, request: Request):
     user = await get_user(request)
@@ -464,27 +487,40 @@ async def checkout(body: CheckoutIn, request: Request):
     for it in cart["items"]:
         groups.setdefault(it["listing"]["owner_id"], []).append(it)
     payment_id = f"pay_{uuid.uuid4().hex[:10]}"
-    service_fee = 2500
     orders = []
     for seller_id, its in groups.items():
         items = [{"listing_id": i["listing"]["listing_id"], "title": i["listing"]["title"], "type": i["listing"]["type"],
                   "image": (i["listing"].get("images") or [""])[0], "unit": i["listing"]["unit"], "qty": i["qty"],
-                  "unit_price": i["unit_price"], "subtotal": i["subtotal"], "is_wholesale": i["is_wholesale"]}
+                  "retail_price": i["listing"]["price"], "unit_price": i["unit_price"], "subtotal": i["subtotal"],
+                  "is_wholesale": i["is_wholesale"]}
                  for i in its]
+        mats = [i for i in its if i["listing"]["type"] == "material"]
+        method, ship_cost, warehouse = None, 0, None
+        if mats:
+            method = body.shipping.get(seller_id, "vendor_cargo")
+            if method not in SHIP_METHODS:
+                raise HTTPException(400, "Metode pengiriman tidak valid")
+            warehouse = mats[0]["listing"].get("warehouse_location")
+            if method == "vendor_cargo":
+                ship_cost = shipping_estimate(mats)
+        items_total = sum(i["subtotal"] for i in items)
         orders.append({
             "order_id": f"MS-{uuid.uuid4().hex[:8].upper()}", "payment_id": payment_id,
             "buyer_id": user.user_id, "buyer_name": user.name, "seller_id": seller_id,
-            "seller_name": its[0]["listing"]["owner_name"], "items": items,
-            "total": sum(i["subtotal"] for i in items), "status": "awaiting_payment",
-            "shipping": body.model_dump(), "timeline": [event("awaiting_payment", "Pesanan dibuat, menunggu pembayaran")],
+            "seller_name": its[0]["listing"]["owner_name"], "items": items, "items_total": items_total,
+            "shipping_method": method, "shipping_cost": ship_cost, "warehouse_location": warehouse,
+            "service_fee": SERVICE_FEE, "total": items_total + ship_cost, "status": "awaiting_payment",
+            "shipping": body.model_dump(exclude={"shipping"}),
+            "timeline": [event("awaiting_payment", "Pesanan dibuat, menunggu pembayaran")],
             "created_at": now_iso(),
         })
     await db.orders.insert_many(orders)
     await db.carts.update_one({"user_id": user.user_id}, {"$set": {"items": []}})
-    grand = sum(o["total"] for o in orders) + service_fee
+    fees = SERVICE_FEE * len(orders)
+    grand = sum(o["total"] for o in orders) + fees
     await db.payments.insert_one({"payment_id": payment_id, "buyer_id": user.user_id, "amount": grand,
-                                  "service_fee": service_fee, "status": "pending", "created_at": now_iso()})
-    return {"payment_id": payment_id, "amount": grand, "service_fee": service_fee,
+                                  "service_fee": fees, "status": "pending", "created_at": now_iso()})
+    return {"payment_id": payment_id, "amount": grand, "service_fee": fees,
             "orders": [o["order_id"] for o in orders]}
 
 
@@ -506,27 +542,74 @@ async def pay(payment_id: str, request: Request):
     if p["status"] == "paid":
         return p
     async for o in db.orders.find({"payment_id": payment_id}, {"_id": 0}):
-        timeline = [event("held", "Pembayaran diterima. Dana ditahan sistem escrow MatShop")]
-        status = "held"
+        timeline = [event("held", "Pembayaran diterima. Dana ditahan sistem escrow MatShop (ESCROW_HELD)")]
+        sets = {"status": "held", "paid_at": now_iso()}
         if all(i["type"] == "asset" for i in o["items"]):
-            status = "shipped"
-            timeline.append(event("shipped", "File aset digital tersedia untuk diunduh"))
+            sets.update(status="shipped", shipped_at=now_iso(), auto_release_at=auto_release_time())
+            timeline.append(event("shipped", "Preview aset tersedia. File asli terbuka setelah COMPLETED"))
         for i in o["items"]:
             inc = {"sold": i["qty"]}
             if i["type"] == "material":
                 inc["stock"] = -i["qty"]
             await db.listings.update_one({"listing_id": i["listing_id"]}, {"$inc": inc})
-        await db.orders.update_one({"order_id": o["order_id"]}, {"$set": {"status": status, "paid_at": now_iso()},
+        await db.orders.update_one({"order_id": o["order_id"]}, {"$set": sets,
                                                                  "$push": {"timeline": {"$each": timeline}}})
     await db.payments.update_one({"payment_id": payment_id}, {"$set": {"status": "paid", "paid_at": now_iso()}})
     return {**p, "status": "paid"}
+
+
+def auto_release_time():
+    return (datetime.now(timezone.utc) + timedelta(days=AUTO_RELEASE_DAYS)).isoformat()
+
+
+async def run_auto_release(flt: dict):
+    # Disputed orders are excluded: funds stay held until mediation finishes.
+    await db.orders.update_many(
+        {**flt, "status": "shipped", "auto_release_at": {"$lte": now_iso()}},
+        {"$set": {"status": "released", "released_at": now_iso()},
+         "$push": {"timeline": event("released", f"Dana dirilis otomatis setelah {AUTO_RELEASE_DAYS} hari tanpa komplain")}})
+
+
+def for_viewer(o: dict, user_id: str) -> dict:
+    if o["buyer_id"] == user_id and o["status"] != "released":
+        o.pop("deliverable_url", None)
+    return o
+
+
+async def find_order(order_id: str, user: User) -> dict:
+    flt = {"order_id": order_id, "$or": [{"buyer_id": user.user_id}, {"seller_id": user.user_id}]}
+    await run_auto_release(flt)
+    o = await db.orders.find_one(flt, {"_id": 0})
+    if not o:
+        raise HTTPException(404, "Pesanan tidak ditemukan")
+    return o
 
 
 @api.get("/orders")
 async def list_orders(request: Request, role: str = "buyer"):
     user = await get_user(request)
     key = "seller_id" if role == "seller" else "buyer_id"
-    return await db.orders.find({key: user.user_id}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    await run_auto_release({key: user.user_id})
+    docs = await db.orders.find({key: user.user_id}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return [for_viewer(o, user.user_id) for o in docs]
+
+
+@api.get("/orders/{order_id}")
+async def get_order(order_id: str, request: Request):
+    user = await get_user(request)
+    return for_viewer(await find_order(order_id, user), user.user_id)
+
+
+@api.get("/orders/{order_id}/invoice.pdf")
+async def invoice_pdf(order_id: str, request: Request):
+    user = await get_user(request)
+    o = await find_order(order_id, user)
+    if o["status"] == "awaiting_payment":
+        raise HTTPException(400, "Invoice tersedia setelah pembayaran")
+    seller = await db.users.find_one({"user_id": o["seller_id"]}, {"_id": 0}) or {}
+    pdf = await run_in_threadpool(build_invoice, o, seller)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="INV-{order_id}.pdf"'})
 
 
 @api.post("/orders/{order_id}/ship")
@@ -536,9 +619,11 @@ async def ship_order(order_id: str, body: ShipIn, request: Request):
     if not o:
         raise HTTPException(404, "Pesanan tidak ditemukan")
     if o["status"] != "held":
-        raise HTTPException(400, "Pesanan tidak dalam status dana ditahan")
-    await db.orders.update_one({"order_id": order_id}, {"$set": {"status": "shipped", "seller_note": body.note},
-                                                        "$push": {"timeline": event("shipped", body.note)}})
+        raise HTTPException(400, "Pesanan tidak dalam status ESCROW_HELD")
+    sets = {"status": "shipped", "seller_note": body.note, "shipped_at": now_iso(), "auto_release_at": auto_release_time()}
+    if body.deliverable_url:
+        sets["deliverable_url"] = body.deliverable_url
+    await db.orders.update_one({"order_id": order_id}, {"$set": sets, "$push": {"timeline": event("shipped", body.note)}})
     return await db.orders.find_one({"order_id": order_id}, {"_id": 0})
 
 
@@ -548,10 +633,42 @@ async def release_order(order_id: str, request: Request):
     o = await db.orders.find_one({"order_id": order_id, "buyer_id": user.user_id}, {"_id": 0})
     if not o:
         raise HTTPException(404, "Pesanan tidak ditemukan")
+    if o["status"] == "disputed":
+        raise HTTPException(400, "Pesanan dalam mediasi (DISPUTE). Dana tetap ditahan")
     if o["status"] != "shipped":
         raise HTTPException(400, "Pesanan belum dikirim/diserahkan")
     await db.orders.update_one({"order_id": order_id}, {"$set": {"status": "released", "released_at": now_iso()},
-                                                        "$push": {"timeline": event("released", "Buyer konfirmasi. Dana dirilis ke penjual")}})
+                                                        "$push": {"timeline": event("released", "Buyer konfirmasi. Dana dirilis ke penjual (COMPLETED)")}})
+    return await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+
+
+@api.post("/orders/{order_id}/dispute")
+async def open_dispute(order_id: str, body: DisputeIn, request: Request):
+    user = await get_user(request)
+    o = await db.orders.find_one({"order_id": order_id, "buyer_id": user.user_id}, {"_id": 0})
+    if not o:
+        raise HTTPException(404, "Pesanan tidak ditemukan")
+    if o["status"] not in ("held", "shipped"):
+        raise HTTPException(400, "Komplain hanya untuk transaksi dengan dana ditahan escrow")
+    await db.orders.update_one({"order_id": order_id}, {
+        "$set": {"status": "disputed", "pre_dispute_status": o["status"],
+                 "dispute": {"reason": body.reason, "opened_at": now_iso(), "status": "open"}},
+        "$push": {"timeline": event("disputed", f"Komplain diajukan: {body.reason}. Pencairan dana ditahan hingga mediasi selesai")}})
+    return await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+
+
+@api.post("/orders/{order_id}/dispute/cancel")
+async def cancel_dispute(order_id: str, request: Request):
+    user = await get_user(request)
+    o = await db.orders.find_one({"order_id": order_id, "buyer_id": user.user_id}, {"_id": 0})
+    if not o or o["status"] != "disputed":
+        raise HTTPException(400, "Tidak ada komplain aktif")
+    back = o.get("pre_dispute_status", "held")
+    sets = {"status": back, "dispute.status": "withdrawn", "dispute.closed_at": now_iso()}
+    if back == "shipped":
+        sets["auto_release_at"] = auto_release_time()
+    await db.orders.update_one({"order_id": order_id}, {"$set": sets,
+                                                        "$push": {"timeline": event(back, "Komplain dibatalkan buyer, transaksi dilanjutkan")}})
     return await db.orders.find_one({"order_id": order_id}, {"_id": 0})
 
 
@@ -559,8 +676,10 @@ async def release_order(order_id: str, request: Request):
 async def download_asset(order_id: str, listing_id: str, request: Request):
     user = await get_user(request)
     o = await db.orders.find_one({"order_id": order_id, "buyer_id": user.user_id}, {"_id": 0})
-    if not o or o["status"] == "awaiting_payment":
-        raise HTTPException(403, "Pesanan belum dibayar")
+    if not o:
+        raise HTTPException(404, "Pesanan tidak ditemukan")
+    if o["status"] != "released":
+        raise HTTPException(403, "File asli hanya bisa diunduh setelah transaksi COMPLETED")
     if not any(i["listing_id"] == listing_id and i["type"] == "asset" for i in o["items"]):
         raise HTTPException(404, "Aset tidak ada di pesanan ini")
     lst = await db.listings.find_one({"listing_id": listing_id}, {"_id": 0})
@@ -570,12 +689,14 @@ async def download_asset(order_id: str, listing_id: str, request: Request):
 @api.get("/seller/stats")
 async def seller_stats(request: Request):
     user = await get_user(request)
+    await run_auto_release({"seller_id": user.user_id})
     orders = await db.orders.find({"seller_id": user.user_id}, {"_id": 0}).to_list(1000)
-    held = sum(o["total"] for o in orders if o["status"] in ("held", "shipped"))
+    held = sum(o["total"] for o in orders if o["status"] in ("held", "shipped", "disputed"))
     released = sum(o["total"] for o in orders if o["status"] == "released")
     listings = await db.listings.count_documents({"owner_id": user.user_id, "is_active": True})
     return {"held": held, "released": released, "orders": len([o for o in orders if o["status"] != "awaiting_payment"]),
-            "pending_action": len([o for o in orders if o["status"] == "held"]), "listings": listings}
+            "pending_action": len([o for o in orders if o["status"] == "held"]),
+            "disputed": len([o for o in orders if o["status"] == "disputed"]), "listings": listings}
 
 
 @api.get("/")

@@ -8,7 +8,7 @@ import { TYPE_LABEL } from "@/lib/format";
 const blank = (type) => ({
   type, category: "", title: "", description: "", price: "", unit: type === "material" ? "lembar" : type === "service" ? "paket" : "file",
   stock: type === "material" ? 100 : null, tiers: type === "material" ? [{ min_qty: 51, price: "" }] : [], images: [], specs: {},
-  delivery_days: type === "service" ? 7 : null, revisions: type === "service" ? 2 : null, file_url: "", file_format: "", file_size: "",
+  delivery_days: type === "service" ? 7 : null, shipping_fee_per_unit: type === "material" ? 2000 : null, warehouse_location: "", revisions: type === "service" ? 2 : null, file_url: "", file_format: "", file_size: "",
 });
 
 const inputCls = "w-full h-10 px-3 rounded-lg border border-slate-300 bg-white outline-none focus:border-amber-600 text-sm";
@@ -77,7 +77,7 @@ export const ListingForm = ({ open, onClose, types, initial, onSaved }) => {
   const save = async (e) => {
     e.preventDefault();
     setBusy(true);
-    const body = { ...f, price: num(f.price), stock: num(f.stock), delivery_days: num(f.delivery_days), revisions: num(f.revisions),
+    const body = { ...f, price: num(f.price), stock: num(f.stock), delivery_days: num(f.delivery_days), revisions: num(f.revisions), shipping_fee_per_unit: num(f.shipping_fee_per_unit),
       tiers: f.type === "material" ? f.tiers.filter((t) => t.min_qty && t.price).map((t) => ({ min_qty: Number(t.min_qty), price: Number(t.price) })) : [] };
     try {
       if (initial) await api.put(`/listings/${initial.listing_id}`, body);
@@ -120,6 +120,12 @@ export const ListingForm = ({ open, onClose, types, initial, onSaved }) => {
             {f.type === "asset" && <F label="Format"><input className={inputCls} placeholder=".SKP" value={f.file_format || ""} onChange={set("file_format")} data-testid="listing-format-input" /></F>}
           </div>
           {f.type === "material" && <F label="Harga Grosir Bertingkat (contoh: ≥51 lembar)"><TiersField tiers={f.tiers} onChange={(tiers) => setF({ ...f, tiers })} /></F>}
+          {f.type === "material" && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <F label="Estimasi ongkir kargo / unit (Rp)"><input type="number" min={0} className={inputCls} value={f.shipping_fee_per_unit ?? ""} onChange={set("shipping_fee_per_unit")} data-testid="listing-shipfee-input" /></F>
+              <F label="Lokasi gudang (ambil mandiri)"><input className={inputCls} value={f.warehouse_location || ""} onChange={set("warehouse_location")} data-testid="listing-warehouse-input" /></F>
+            </div>
+          )}
           {f.type === "service" && <F label="Jumlah revisi"><input type="number" className={inputCls} value={f.revisions ?? ""} onChange={set("revisions")} data-testid="listing-revisions-input" /></F>}
           {f.type === "asset" && (
             <div className="grid sm:grid-cols-3 gap-4">

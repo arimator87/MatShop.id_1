@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Clock, Lock, Truck, Wallet } from "lucide-react";
+import { Clock, Lock, ShieldAlert, Truck, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
 import { rupiah } from "@/lib/format";
 
@@ -7,6 +7,7 @@ const CARDS = [
   ["awaiting_payment", "Menunggu Bayar", Clock, "text-slate-600"],
   ["held", "Dana Ditahan", Lock, "text-amber-600"],
   ["shipped", "Dikirim / Diserahkan", Truck, "text-blue-600"],
+  ["disputed", "Komplain / Mediasi", ShieldAlert, "text-red-600"],
   ["released", "Dana Dirilis", Wallet, "text-green-600"],
 ];
 
@@ -14,7 +15,7 @@ export const EscrowSummary = () => {
   const [orders, setOrders] = useState([]);
   useEffect(() => { api.get("/orders", { params: { role: "buyer" } }).then(({ data }) => setOrders(data)); }, []);
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" data-testid="escrow-summary">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4" data-testid="escrow-summary">
       {CARDS.map(([status, label, Icon, cls]) => {
         const list = orders.filter((o) => o.status === status);
         return (

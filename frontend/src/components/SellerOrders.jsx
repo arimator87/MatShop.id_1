@@ -5,18 +5,25 @@ import { OrderCard } from "@/components/OrderCard";
 
 const ShipAction = ({ o, onDone, isService }) => {
   const [note, setNote] = useState("");
+  const [url, setUrl] = useState("");
   const ship = async () => {
     try {
-      await api.post(`/orders/${o.order_id}/ship`, { note });
+      await api.post(`/orders/${o.order_id}/ship`, { note, deliverable_url: url || null });
       toast.success("Status diperbarui");
       onDone();
     } catch (e) { toast.error(errMsg(e)); }
   };
+  const needsFile = isService && o.items.some((i) => i.type === "service");
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <input data-testid={`ship-note-${o.order_id}`} value={note} onChange={(e) => setNote(e.target.value)}
-        placeholder={isService ? "Link hasil desain / progress" : "No. resi / armada"}
+        placeholder={isService ? "Catatan / link preview hasil" : "No. resi / armada"}
         className="h-10 px-3 rounded-full border border-slate-300 text-sm w-56 outline-none focus:border-amber-600" />
+      {needsFile && (
+        <input data-testid={`ship-deliverable-${o.order_id}`} value={url} onChange={(e) => setUrl(e.target.value)}
+          placeholder="Link file asli (.skp/.pdf) — terbuka saat COMPLETED"
+          className="h-10 px-3 rounded-full border border-slate-300 text-sm w-72 outline-none focus:border-amber-600" />
+      )}
       <button data-testid={`ship-submit-${o.order_id}`} onClick={ship} disabled={note.length < 2}
         className="h-10 px-5 rounded-full bg-blue-600 text-white text-sm font-semibold disabled:opacity-50">{isService ? "Serahkan Hasil" : "Kirim"}</button>
     </div>

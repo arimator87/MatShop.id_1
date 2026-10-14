@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Clock, Download, Star, Tag } from "lucide-react";
 import { imgSrc } from "@/lib/api";
 import { rupiah } from "@/lib/format";
+import { Watermark } from "@/components/Watermark";
 
 const Meta = ({ l }) => {
   if (l.type === "material" && l.tiers?.length) {
@@ -26,6 +27,7 @@ export const ListingCard = ({ l, i = 0 }) => (
     <div className="relative aspect-[4/3] bg-[#F1EFE9] overflow-hidden">
       <img src={imgSrc(l.images?.[0])} alt={l.title} loading="lazy"
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+      {l.type !== "material" && <Watermark small />}
       <span className="absolute top-3 left-3 text-[10px] font-mono uppercase tracking-wider bg-white/90 backdrop-blur px-2 py-1 rounded">
         {l.category_label}
       </span>

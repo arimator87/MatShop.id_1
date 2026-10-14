@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Lock, Package, Store, Wallet } from "lucide-react";
+import { Lock, Package, ShieldAlert, Store, Wallet } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -45,10 +45,11 @@ const SellerStats = () => {
   const [s, setS] = useState(null);
   useEffect(() => { api.get("/seller/stats").then(({ data }) => setS(data)); }, []);
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
       <Stat icon={Lock} label="Dana Ditahan Escrow" value={rupiah(s?.held)} testid="stat-held" />
       <Stat icon={Wallet} label="Dana Dirilis" value={rupiah(s?.released)} testid="stat-released" />
       <Stat icon={Package} label="Perlu Diproses" value={s?.pending_action ?? "-"} testid="stat-pending" />
+      <Stat icon={ShieldAlert} label="Dalam Mediasi" value={s?.disputed ?? "-"} testid="stat-disputed" />
       <Stat icon={Store} label="Listing Aktif" value={s?.listings ?? "-"} testid="stat-listings" />
     </div>
   );

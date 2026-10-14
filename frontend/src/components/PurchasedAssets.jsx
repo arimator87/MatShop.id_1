@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Download, FileBox } from "lucide-react";
+import { Download, FileBox, Lock } from "lucide-react";
 import { api, imgSrc } from "@/lib/api";
 import { rupiah } from "@/lib/format";
 import { downloadAsset } from "@/components/OrderCard";
@@ -10,7 +10,7 @@ export const PurchasedAssets = () => {
   useEffect(() => {
     api.get("/orders", { params: { role: "buyer" } }).then(({ data }) => setAssets(
       data.filter((o) => o.status !== "awaiting_payment")
-        .flatMap((o) => o.items.filter((i) => i.type === "asset").map((i) => ({ ...i, order_id: o.order_id, created_at: o.created_at })))
+        .flatMap((o) => o.items.filter((i) => i.type === "asset").map((i) => ({ ...i, order_id: o.order_id, created_at: o.created_at, status: o.status })))
     ));
   }, []);
 
@@ -33,10 +33,17 @@ export const PurchasedAssets = () => {
             <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500">{a.order_id} · {new Date(a.created_at).toLocaleDateString("id-ID")}</div>
             <div className="font-heading font-semibold leading-snug line-clamp-2">{a.title}</div>
             <div className="text-sm text-slate-600 font-mono">{rupiah(a.subtotal)}</div>
-            <button data-testid={`purchased-download-${a.listing_id}`} onClick={() => downloadAsset(a.order_id, a.listing_id)}
-              className="mt-auto h-10 rounded-full bg-blue-600 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors">
-              <Download className="w-4 h-4" /> Unduh File
-            </button>
+            {a.status === "released" ? (
+              <button data-testid={`purchased-download-${a.listing_id}`} onClick={() => downloadAsset(a.order_id, a.listing_id)}
+                className="mt-auto h-10 rounded-full bg-blue-600 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors">
+                <Download className="w-4 h-4" /> Unduh File Asli
+              </button>
+            ) : (
+              <Link to={`/pesanan/${a.order_id}`} data-testid={`purchased-locked-${a.listing_id}`}
+                className="mt-auto h-10 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold inline-flex items-center justify-center gap-2 hover:bg-slate-200">
+                <Lock className="w-3.5 h-3.5" /> Konfirmasi pesanan (COMPLETED) untuk unduh
+              </Link>
+            )}
           </div>
         </div>
       ))}

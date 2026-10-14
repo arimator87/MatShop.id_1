@@ -33,10 +33,18 @@ export const TABS = [
 ];
 
 export const STATUS_META = {
-  awaiting_payment: { label: "Menunggu Pembayaran", cls: "bg-slate-100 text-slate-700" },
-  held: { label: "Dana Ditahan (Escrow)", cls: "bg-amber-100 text-amber-800" },
-  shipped: { label: "Dikirim / Diserahkan", cls: "bg-blue-100 text-blue-800" },
-  released: { label: "Selesai · Dana Dirilis", cls: "bg-green-100 text-green-800" },
+  awaiting_payment: { label: "Menunggu Pembayaran", code: "AWAITING_PAYMENT", cls: "bg-slate-100 text-slate-700" },
+  held: { label: "Dana Ditahan (Escrow)", code: "ESCROW_HELD", cls: "bg-amber-100 text-amber-800" },
+  shipped: { label: "Dikirim / Diserahkan", code: "SHIPPED", cls: "bg-blue-100 text-blue-800" },
+  disputed: { label: "Komplain · Mediasi", code: "DISPUTE", cls: "bg-red-100 text-red-700" },
+  released: { label: "Selesai · Dana Dirilis", code: "COMPLETED", cls: "bg-green-100 text-green-800" },
 };
+
+export const SHIP_METHODS = {
+  pickup: "Ambil Mandiri di Gudang Vendor",
+  vendor_cargo: "Pengiriman Kargo/Armada Vendor",
+};
+export const CARGO_BASE_FEE = 50000;
+export const SERVICE_FEE = 2500;
 
 export const TYPE_LABEL = { material: "Material", service: "Jasa", asset: "Aset 3D" };

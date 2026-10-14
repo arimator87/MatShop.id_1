@@ -130,8 +130,18 @@ async def seed(db):
         await db.users.update_one({"user_id": u["user_id"]}, {"$setOnInsert": {
             **u, "picture": "", "active_role": u["primary_role"],
             "created_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
-    if await db.listings.count_documents({}) > 0:
-        return
+    if await db.listings.count_documents({}) == 0:
+        await insert_listings(db)
+    for cat, fee in SHIP_FEES.items():
+        await db.listings.update_many(
+            {"type": "material", "category": cat, "shipping_fee_per_unit": {"$exists": False}},
+            {"$set": {"shipping_fee_per_unit": fee, "warehouse_location": "Gudang PT Material Nusantara, Cikarang - Bekasi"}})
+
+
+SHIP_FEES = {"plywood": 3500, "hpl": 1500, "spc": 2500, "marmer": 15000, "wallpanel": 1500, "lis": 1000, "furniture": 75000}
+
+
+async def insert_listings(db):
     now = datetime.now(timezone.utc)
     docs = []
     for i, item in enumerate(SEED_LISTINGS):
