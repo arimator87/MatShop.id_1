@@ -1,0 +1,124 @@
+{
+  "project_name": "MatShop.id",
+  "app_type": "Hybrid B2B/B2C Material Marketplace & Designer Hub",
+  "language": "Bahasa Indonesia",
+  "design_persona": {
+    "name": "E1 The Anti-AI Architectural Designer",
+    "theme": "Architectural Precision Meets Tactile Craftsmanship",
+    "emotional_archetype": "Swiss & Architectural High-Contrast (Trust, Blueprint Rigor, Material Warmth)",
+    "visual_mood": "Clean, structural, highly readable, matte stone surfaces with blueprint grid accents and energetic amber/terracotta calls to action."
+  },
+  "typography": {
+    "font_family_primary": "Plus Jakarta Sans, sans-serif",
+    "font_family_heading": "Outfit, sans-serif",
+    "font_family_mono": "JetBrains Mono, monospace",
+    "hierarchy": {
+      "h1_hero": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 leading-tight",
+      "h2_section": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-slate-900",
+      "h3_card_title": "text-lg sm:text-xl font-semibold text-slate-800",
+      "h4_widget_header": "text-base sm:text-lg font-medium text-slate-700",
+      "body_text": "text-sm sm:text-base text-slate-600 leading-relaxed",
+      "caption_mono": "text-xs font-mono text-slate-500 tracking-wider uppercase"
+    }
+  },
+  "colors": {
+    "background_base": "#F8F7F4",
+    "surface_card": "#FFFFFF",
+    "surface_subtle": "#F1EFE9",
+    "brand_primary": "#1E242B",
+    "brand_secondary": "#2563EB",
+    "accent_terracotta": "#D97706",
+    "accent_amber_highlight": "#EA580C",
+    "text_dark": "#0F172A",
+    "text_muted": "#475569",
+    "text_light": "#94A3B8",
+    "border_subtle": "#E2E8F0",
+    "border_architectural": "#CBD5E1",
+    "escrow_status": {
+      "holding": "#D97706",
+      "shipped": "#2563EB",
+      "completed": "#16A34A",
+      "dispute": "#DC2626"
+    }
+  },
+  "layout_and_spacing": {
+    "spacing_philosophy": "Generous structural margins (2-3x default) with blueprint grid dividers and rounded-xl card containers.",
+    "container_max_width": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "grid_patterns": {
+      "hero_bento": "grid grid-cols-1 lg:grid-cols-12 gap-8 items-center",
+      "catalog_grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6",
+      "dashboard_grid": "grid grid-cols-1 lg:grid-cols-4 gap-6"
+    }
+  },
+  "key_features_and_components": {
+    "navigation_header": {
+      "components": "Brand logo, Category nav, Search bar with filter tags, Cart icon with badge count, Role switcher dropdown (Kontraktor, Supplier, Desainer), Auth status/Google Login simulation",
+      "styling": "Sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200"
+    },
+    "role_onboarding_modal": {
+      "purpose": "First-time or role-switch onboarding selecting Kontraktor/Pemilik Proyek, Supplier Material, or Desainer Interior",
+      "styling": "Centrally aligned dialog with interactive persona cards, privilege bullet points, and instant dashboard redirect"
+    },
+    "catalog_filters": {
+      "tabs": [
+        "Semua Material",
+        "Plywood & Sheet",
+        "SPC & Flooring",
+        "WallPanel & WPC",
+        "Jasa Desain 3D & RAB",
+        "Aset File 3D"
+      ],
+      "data_testids": [
+        "catalog-tab-all",
+        "catalog-tab-plywood",
+        "catalog-tab-spc",
+        "catalog-tab-wallpanel",
+        "catalog-tab-services",
+        "catalog-tab-assets"
+      ]
+    },
+    "tiered_pricing_calculator": {
+      "concept": "Dynamic unit pricing based on quantity (1-50 lembar retail vs >50 lembar grosir discount)",
+      "component_behavior": "Live discount calculation display on product modal & cart page"
+    },
+    "3d_asset_market_card": {
+      "file_formats": [".SKP (SketchUp)", ".D5 (D5 Render)", ".FBX", "Textures 4K"],
+      "features": "Preview renders viewer, Instant download button after escrow checkout confirmation"
+    },
+    "escrow_payment_flow": {
+      "timeline_steps": [
+        "1. Pembayaran Escrow (Dana Ditahan)",
+        "2. Pengiriman / Pengerjaan",
+        "3. Konfirmasi Penerimaan Buyer",
+        "4. Dana Dirilis ke Penjual"
+      ],
+      "actions": "Buyer 'Konfirmasi & Rilis Dana' button, Supplier 'Input Resi/Progress' form"
+    },
+    "dashboards": {
+      "supplier": "Kelola Stok Material, Setting Price Tiers (Eceran vs Grosir), Pesanan B2B Masuk",
+      "designer": "Upload Aset 3D, Paketan Jasa Desain/RAB/DED, Transaksi Download Aset",
+      "buyer_contractor": "Riwayat Pesanan Escrow, Unduhan Aset 3D Saya, Keranjang & Checkout"
+    }
+  },
+  "media_and_images": {
+    "hero_banner": "https://images.unsplash.com/photo-1724582586529-62622e50c0b3?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "materials": {
+      "plywood_wood": "https://images.unsplash.com/photo-1627590720218-c5ed819dae7e?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "marble_granite": "https://images.unsplash.com/photo-1709023467724-76b796b0c7d2?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "spc_flooring": "https://images.unsplash.com/photo-1617090446934-b9058290f047?crop=entropy&cs=srgb&fm=jpg&q=85"
+    },
+    "interior_renders": {
+      "modern_living_room": "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "minimalist_lounge": "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "designer_studio": "https://images.unsplash.com/photo-1630659508738-74252299fa4d?crop=entropy&cs=srgb&fm=jpg&q=85"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Use exact Bahasa Indonesia terminology for architectural & B2B trading terms (e.g. 'Plywood / Multiplek', 'Harga Grosir >50 Lembar', 'Gambar Kerja DED', 'Escrow Payment (Dana Ditahan System)', 'Rencana Anggaran Biaya (RAB)').",
+    "Ensure every clickable button, input, tab, filter, and badge contains kebab-case data-testid attributes for E2E testing.",
+    "Ensure the tiered price calculator instantly updates totals when input quantity changes above 50 units.",
+    "Provide seed mock data in FastAPI for products, services, 3D assets, escrow orders, and supplier inventory so the application is fully interactive on first launch.",
+    "Implement the Escrow Payment timeline visually with active status highlights (Holding -> Shipped -> Buyer Confirmed -> Released).",
+    "Include direct file download simulation for purchased 3D assets (.skp, .d5, .fbx)."
+  ]
+}
