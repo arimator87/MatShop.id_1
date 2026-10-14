@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { Star, Trophy } from "lucide-react";
 
 export const Stars = ({ value, size = "w-4 h-4", testid }) => (
   <span className="inline-flex items-center gap-0.5" data-testid={testid} aria-label={`${value} dari 5`}>
@@ -24,3 +24,10 @@ export const StarInput = ({ value, onChange }) => (
     ))}
   </div>
 );
+
+export const TopRatedBadge = ({ show, testid, cls = "" }) => show ? (
+  <span data-testid={testid} title="Rating ≥ 4.5, min. 3 ulasan & 3 transaksi selesai"
+    className={`inline-flex items-center gap-1 text-[10px] font-mono font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#1E242B] text-amber-400 ${cls}`}>
+    <Trophy className="w-3 h-3" /> Top Rated
+  </span>
+) : null;

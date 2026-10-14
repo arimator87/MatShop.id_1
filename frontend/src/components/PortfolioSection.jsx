@@ -4,7 +4,7 @@ import { BadgeCheck, MapPin } from "lucide-react";
 import { api, imgSrc } from "@/lib/api";
 import { roleOf, WORK_TYPES } from "@/lib/vendor";
 import { SectionHeader } from "@/components/SectionHeader";
-import { RatingBadge } from "@/components/Stars";
+import { RatingBadge, TopRatedBadge } from "@/components/Stars";
 
 const selCls = "h-10 px-3 rounded-full border border-slate-300 bg-white text-sm outline-none focus:border-amber-600";
 
@@ -21,7 +21,10 @@ const PortfolioCard = ({ v, i }) => {
         ))}
       </div>
       <div className="p-5 space-y-2">
-        <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-amber-700"><r.icon className="w-3.5 h-3.5" />{r.label}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-amber-700"><r.icon className="w-3.5 h-3.5" />{r.label}</div>
+          <TopRatedBadge show={v.top_rated} testid={`portfolio-top-rated-${v.user_id}`} />
+        </div>
         <div className="font-heading font-semibold text-lg leading-snug flex items-center gap-1.5">
           <span className="line-clamp-1">{v.business_name}</span><BadgeCheck className="w-5 h-5 text-green-600 shrink-0" />
         </div>
@@ -51,6 +54,10 @@ const Filters = ({ q, setQ, cities }) => {
         <option value="featured">Unggulan</option>
         <option value="rating">Rating Tertinggi</option>
       </select>
+      <label className={`h-10 px-4 rounded-full border text-sm inline-flex items-center gap-2 cursor-pointer transition-colors ${q.top_rated ? "bg-[#1E242B] text-amber-400 border-[#1E242B]" : "bg-white border-slate-300"}`}>
+        <input type="checkbox" checked={q.top_rated} onChange={(e) => setQ({ ...q, top_rated: e.target.checked })} className="accent-amber-500" data-testid="portfolio-filter-top-rated" />
+        Hanya Top Rated
+      </label>
     </div>
   );
 };
@@ -58,7 +65,7 @@ const Filters = ({ q, setQ, cities }) => {
 export const PortfolioSection = ({ limit = 8, full = false }) => {
   const [items, setItems] = useState(null);
   const [cities, setCities] = useState([]);
-  const [q, setQ] = useState({ city: "", work_type: "", sort: "featured" });
+  const [q, setQ] = useState({ city: "", work_type: "", sort: "featured", top_rated: false });
   useEffect(() => { api.get("/portfolios/filters").then(({ data }) => setCities(data.cities)); }, []);
   useEffect(() => {
     const params = Object.fromEntries(Object.entries({ ...q, limit }).filter(([, v]) => v));

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CheckCircle2, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { rupiah } from "@/lib/format";
-import { RatingBadge } from "@/components/Stars";
+import { RatingBadge, TopRatedBadge } from "@/components/Stars";
 
 export const BidCard = ({ bid, canAccept, onAccept }) => {
   const [open, setOpen] = useState(false);
@@ -13,6 +13,7 @@ export const BidCard = ({ bid, canAccept, onAccept }) => {
         <div>
           <div className="font-heading font-semibold">{bid.vendor_name}</div>
           <div className="flex flex-wrap items-center gap-2 my-1">
+            <TopRatedBadge show={bid.vendor_top_rated} testid={`bid-top-rated-${bid.bid_id}`} />
             <RatingBadge avg={bid.vendor_rating || 0} count={bid.vendor_review_count || 0} testid={`bid-rating-${bid.bid_id}`} />
             <Link to={`/vendor/${bid.vendor_id}`} target="_blank" rel="noopener noreferrer" data-testid={`bid-vendor-profile-${bid.bid_id}`} className="text-xs font-semibold text-amber-700 hover:underline">Lihat Profil</Link>
           </div>

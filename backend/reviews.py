@@ -23,6 +23,15 @@ class ReviewIn(BaseModel):
     photos: List[str] = Field(default=[], max_length=4)
 
 
+class AdminReviewIn(BaseModel):
+    vendor_id: str
+    reviewer_name: str = Field(min_length=2)
+    subject: str = Field(min_length=3)
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(min_length=10, max_length=1000)
+    photos: List[str] = Field(default=[], max_length=4)
+
+
 class ReplyIn(BaseModel):
     text: str = Field(min_length=3, max_length=1000)
 
@@ -42,14 +51,34 @@ async def rating_stats(vendor_ids):
     return {r["_id"]: (round(r["avg"], 1), r["count"]) for r in rows}
 
 
+async def done_count(uid):
+    return (await db().custom_projects.count_documents({"vendor_id": uid, "status": "completed"}),
+            await db().orders.count_documents({"seller_id": uid, "status": "released"}),
+            await db().reviews.count_documents({"vendor_id": uid, "source": {"$in": ["admin", "seed"]}}))
+
+
+def is_top(avg, count, done):
+    return avg >= 4.5 and count >= 3 and done >= 3
+
+
+async def badges(ids):
+    stats = await rating_stats(ids)
+    out = {}
+    for uid in set(ids):
+        avg, count = stats.get(uid, (0, 0))
+        out[uid] = {"rating": avg, "review_count": count, "top_rated": is_top(avg, count, sum(await done_count(uid)))}
+    return out
+
+
 async def summary(u, stats):
     bp = u["business_profile"]
     avg, count = stats.get(u["user_id"], (0, 0))
-    return {"user_id": u["user_id"], "business_name": bp["business_name"], "address": bp["address"], "city": city_of(bp),
+    projects, orders, offline = await done_count(u["user_id"])
+    return {"top_rated": is_top(avg, count, projects + orders + offline), "completed_total": projects + orders + offline,
+            "offline_projects": offline, "user_id": u["user_id"], "business_name": bp["business_name"], "address": bp["address"], "city": city_of(bp),
             "work_types": bp.get("work_types", []), "portfolio_url": bp["portfolio_url"], "photos": bp["photos"],
             "primary_role": u.get("primary_role"), "rating_avg": avg, "review_count": count,
-            "completed_projects": await db().custom_projects.count_documents({"vendor_id": u["user_id"], "status": "completed"}),
-            "completed_orders": await db().orders.count_documents({"seller_id": u["user_id"], "status": "released"}),
+            "completed_projects": projects, "completed_orders": orders,
             "listings": await db().listings.count_documents({"owner_id": u["user_id"], "is_active": True})}
 
 
@@ -60,7 +89,8 @@ async def portfolio_filters():
 
 
 @router.get("/portfolios")
-async def portfolios(limit: int = Query(12, le=50), city: Optional[str] = None, work_type: Optional[str] = None, sort: str = "featured"):
+async def portfolios(limit: int = Query(12, le=50), city: Optional[str] = None, work_type: Optional[str] = None, sort: str = "featured",
+                     top_rated: bool = False):
     docs = await db().users.find(VENDOR_FILTER, {"_id": 0}).to_list(500)
     if city:
         docs = [d for d in docs if city_of(d["business_profile"]).lower() == city.lower()]
@@ -68,6 +98,8 @@ async def portfolios(limit: int = Query(12, le=50), city: Optional[str] = None, 
         docs = [d for d in docs if work_type in d["business_profile"].get("work_types", [])]
     stats = await rating_stats([d["user_id"] for d in docs])
     out = [await summary(d, stats) for d in docs]
+    if top_rated:
+        out = [x for x in out if x["top_rated"]]
     if sort == "rating":
         out.sort(key=lambda x: (-x["rating_avg"], -x["review_count"]))
     else:
@@ -139,3 +171,40 @@ async def reply_review(review_id: str, body: ReplyIn, request: Request):
     if r["reviewer_id"] != "seed":
         await ctx["notify"](r["reviewer_id"], "Vendor membalas ulasan Anda", f"{user.name}: {body.text[:80]}", f"/vendor/{user.user_id}")
     return {**r, "reply": reply}
+
+
+async def require_admin(request):
+    user = await ctx["get_user"](request)
+    if not user.is_admin:
+        raise HTTPException(403, "Khusus admin MatShop")
+    return user
+
+
+@router.post("/admin/reviews")
+async def admin_add_review(body: AdminReviewIn, request: Request):
+    admin = await require_admin(request)
+    if not await db().users.find_one({**VENDOR_FILTER, "user_id": body.vendor_id}):
+        raise HTTPException(404, "Vendor terverifikasi tidak ditemukan")
+    rid = f"rev_{uuid.uuid4().hex[:12]}"
+    doc = {"review_id": rid, "vendor_id": body.vendor_id, "reviewer_id": "admin", "reviewer_name": body.reviewer_name.strip(),
+           "source": "admin", "ref_id": f"admin_{rid}", "subject": body.subject.strip(), "rating": body.rating,
+           "comment": body.comment.strip(), "photos": body.photos, "reply": None, "added_by": admin.name,
+           "created_at": datetime.now(timezone.utc).isoformat()}
+    await db().reviews.insert_one(dict(doc))
+    await ctx["notify"](body.vendor_id, f"Ulasan proyek offline ★{body.rating}", f"Ditambahkan tim MatShop: {body.subject}", f"/vendor/{body.vendor_id}")
+    return doc
+
+
+@router.get("/admin/reviews")
+async def admin_list_reviews(request: Request):
+    await require_admin(request)
+    return await db().reviews.find({"source": "admin"}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+@router.delete("/admin/reviews/{review_id}")
+async def admin_delete_review(review_id: str, request: Request):
+    await require_admin(request)
+    res = await db().reviews.delete_one({"review_id": review_id})
+    if not res.deleted_count:
+        raise HTTPException(404, "Ulasan tidak ditemukan")
+    return {"ok": True}

@@ -162,7 +162,34 @@ async def opportunities(request: Request):
     docs = await db().custom_projects.find({"status": "open", "client_id": {"$ne": user.user_id}},
                                            {"_id": 0, "phone": 0}).sort("created_at", -1).to_list(200)
     mine = {b["project_id"] for b in await db().project_bids.find({"vendor_id": user.user_id}, {"_id": 0, "project_id": 1}).to_list(1000)}
-    return [{**d, "has_my_bid": d["project_id"] in mine} for d in docs]
+    out = [{**d, "has_my_bid": d["project_id"] in mine, "invited": user.user_id in d.get("invited_vendor_ids", [])} for d in docs]
+    out.sort(key=lambda d: not d["invited"])
+    return out
+
+
+class InviteIn(BaseModel):
+    vendor_id: str
+
+
+@router.post("/projects/{project_id}/invite")
+async def invite_vendor(project_id: str, body: InviteIn, request: Request):
+    user = await user_of(request)
+    p = await load(project_id)
+    if p["client_id"] != user.user_id:
+        raise HTTPException(403, "Hanya pemilik proyek yang bisa mengundang vendor")
+    if p["status"] != "open":
+        raise HTTPException(400, "Undangan hanya untuk proyek OPEN_FOR_BID")
+    if body.vendor_id == user.user_id:
+        raise HTTPException(400, "Tidak bisa mengundang diri sendiri")
+    v = await db().users.find_one({"user_id": body.vendor_id, "verification_status": "VERIFIED", "suspended": {"$ne": True}}, {"_id": 0})
+    if not v:
+        raise HTTPException(404, "Vendor terverifikasi tidak ditemukan")
+    if body.vendor_id in p.get("invited_vendor_ids", []):
+        raise HTTPException(400, "Vendor sudah diundang ke proyek ini")
+    await db().custom_projects.update_one({"project_id": project_id}, {"$addToSet": {"invited_vendor_ids": body.vendor_id},
+                                                                       "$push": {"timeline": event(f"Klien mengundang {v['name']} untuk menawar")}})
+    await notify(body.vendor_id, "Undangan menawar proyek", f"{user.name} mengundang Anda menawar: {p['title']}", f"/custom-project/{project_id}")
+    return {"ok": True, "invited_vendor_ids": [*p.get("invited_vendor_ids", []), body.vendor_id]}
 
 
 @router.get("/vendor-projects")
@@ -191,9 +218,10 @@ async def get_project(project_id: str, request: Request):
         bids = await db().project_bids.find({"project_id": project_id, "vendor_id": user.user_id}, {"_id": 0}).to_list(1)
         if not is_vendor:
             p.pop("phone", None)
-    stats = await reviews.rating_stats([b["vendor_id"] for b in bids])
+    meta = await reviews.badges([b["vendor_id"] for b in bids])
     for b in bids:
-        b["vendor_rating"], b["vendor_review_count"] = stats.get(b["vendor_id"], (0, 0))
+        m = meta[b["vendor_id"]]
+        b["vendor_rating"], b["vendor_review_count"], b["vendor_top_rated"] = m["rating"], m["review_count"], m["top_rated"]
     viewer = "client" if is_client else "vendor" if is_vendor else "admin" if user.is_admin else "bidder"
     return {**p, "bids": bids, "viewer": viewer}
 

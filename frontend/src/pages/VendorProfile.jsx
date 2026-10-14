@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowRight, BadgeCheck, ExternalLink, Loader2, MapPin, ShoppingBag } from "lucide-react";
+import { ArrowRight, BadgeCheck, ExternalLink, Loader2, MapPin, Send, ShoppingBag } from "lucide-react";
 import { api, imgSrc } from "@/lib/api";
 import { roleOf, WORK_TYPES } from "@/lib/vendor";
 import { useListings } from "@/lib/useListings";
 import { ListingGrid } from "@/components/ListingGrid";
-import { RatingBadge, Stars } from "@/components/Stars";
+import { RatingBadge, Stars, TopRatedBadge } from "@/components/Stars";
+import { InviteDialog } from "@/components/custom/InviteDialog";
 import { ReviewPhotos } from "@/components/ReviewPhotos";
 import { ReviewReply } from "@/components/ReviewReply";
 import { useAuth } from "@/context/AuthContext";
@@ -60,17 +61,23 @@ const Reviews = ({ v, isOwner, onReply }) => (
 
 const Header = ({ v }) => {
   const r = roleOf(v.primary_role);
+  const { user } = useAuth();
+  const [inviting, setInviting] = useState(false);
   return (
     <div className="flex flex-wrap items-end justify-between gap-6">
       <div className="space-y-3">
         <div className="text-[11px] font-mono uppercase tracking-widest text-amber-700 flex items-center gap-1.5"><r.icon className="w-4 h-4" />{r.label} · Terverifikasi MatShop.id</div>
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight flex items-center gap-3" data-testid="vendor-name">{v.business_name}<BadgeCheck className="w-8 h-8 text-green-600 shrink-0" data-testid="vendor-verified-badge" /></h1>
         <div className="text-sm text-slate-600 flex items-center gap-1" data-testid="vendor-city"><MapPin className="w-4 h-4" />{v.address}</div>
-        <RatingBadge avg={v.rating_avg} count={v.review_count} testid="vendor-rating-badge" />
+        <div className="flex flex-wrap items-center gap-3"><TopRatedBadge show={v.top_rated} testid="vendor-top-rated" cls="text-xs px-3 py-1" /><RatingBadge avg={v.rating_avg} count={v.review_count} testid="vendor-rating-badge" /></div>
         <div className="flex flex-wrap gap-1.5">{v.work_types.map((w) => <span key={w} className="text-xs px-2.5 py-1 rounded-full bg-[#F1EFE9]">{WORK_TYPES[w]}</span>)}</div>
       </div>
       <div className="flex flex-wrap gap-3">
         <Link to="/custom-project/ajukan" data-testid="vendor-cta-request" className="h-12 px-6 rounded-full bg-amber-600 text-white font-semibold inline-flex items-center gap-2 hover:bg-amber-700">Ajukan Proyek <ArrowRight className="w-4 h-4" /></Link>
+        {user && user.user_id !== v.user_id && (
+          <button onClick={() => setInviting(true)} data-testid="vendor-cta-invite" className="h-12 px-6 rounded-full border-2 border-amber-600 text-amber-700 font-semibold inline-flex items-center gap-2 hover:bg-amber-50"><Send className="w-4 h-4" /> Undang ke Proyek</button>
+        )}
+        {inviting && <InviteDialog v={v} onClose={() => setInviting(false)} />}
         <a href="#vendor-listings" data-testid="vendor-cta-order" className="h-12 px-6 rounded-full bg-[#1E242B] text-white font-semibold inline-flex items-center gap-2 hover:bg-slate-800"><ShoppingBag className="w-4 h-4" /> Order Produk / Jasa</a>
         <a href={v.portfolio_url} target="_blank" rel="noreferrer" data-testid="vendor-cta-external" className="h-12 px-6 rounded-full border border-slate-300 font-semibold inline-flex items-center gap-2 hover:border-slate-900"><ExternalLink className="w-4 h-4" /> Portofolio Eksternal</a>
       </div>
@@ -92,7 +99,7 @@ export default function VendorProfile() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 border-y border-slate-200 py-6">
         <Stat n={v.photos.length} label="Foto karya" />
         <Stat n={v.completed_projects} label="Proyek custom selesai" testid="vendor-stat-projects" />
-        <Stat n={v.completed_orders} label="Pesanan selesai" />
+        <Stat n={v.completed_orders + v.offline_projects} label="Pesanan & proyek offline selesai" />
         <Stat n={v.listings} label="Listing aktif" />
       </div>
       <Gallery photos={v.photos} />
