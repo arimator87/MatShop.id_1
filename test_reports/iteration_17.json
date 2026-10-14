@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 17 — Custom Furniture dynamic config (admin-managed work types & finishings) + new size-formula calculator. Backend: 26/26 pytest passed on /app/backend/tests/test_custom_projects.py (fully rewritten from legacy `size` param to new `dims` request). Covered: public /api/custom/config shape & ordering, estimate math for all 3 modes (cabinet P300L60T240→7.2 w/ min 18M max 25.2M, fL=1.5 branch at L=80, L>100 warning + null min/max, fT=1 at T<100, surface P80T250→2.5 Unit/Set, surface P300T250→7.5 m², area 36), 400s for missing dims / inactive type / finishing-not-allowed / unknown type; admin CRUD for work-types (mode/finishing/rate min<=max validation), finishings (delete prunes from types), reorder; 403 for non-admin; project create with dims persists size/work_type_label/finishing_label/unit_label/size_label; create without dims still works; approve → opportunities → bid → accept regression. Frontend: /custom-project calculator renders all 4 type cards, cabinet mode shows P/L/T inputs with correct qty & range (7,2 meter lari → Rp 18.000.000 – Rp 25.200.000), L=110 triggers calc-warning, wall_finish surface mode hides L input and shows '2,5 Unit/Set' for P=80 T=250, full_interior shows area input, calc-request-survey-button navigates to /custom-project/ajukan with prefill (type/finishing/p/l/t/budget query params). Request form fully prefilled, submit creates project (CP-xxxx), detail page shows 'P 300 × L 60 × T 240 cm → 7,2 meter lari · Finishing HPL'. Admin: /admin → admin-tab-customcfg → custom-config-manager renders with wt-row-* and fin-row-* for all seeded entries; wt-add opens wt-dialog with wt-label-input, wt-mode-select, wt-unit-input, wt-hint-input, wt-icon-image-input, wt-icon-{Name} lucide picker, wt-fin-{key} chips, wt-dialog-save (wt-rate-min/max-{key} appear only after toggling the finishing chip — correct behavior); fin-add opens fin-dialog with fin-label-input, fin-desc-input, fin-dialog-save. Clean up executed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_custom_projects.py",
+    "/app/test_reports/pytest/iter17.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "custom_config.py:67 surface mode uses `max(d.p/100, 1)` which clamps lower bound to 1 m. This causes a side <100 cm to still contribute 1 m to the quantity (hence qty for P80 T250 → 1×2.5 = 2.5). Combined with the 'Unit/Set' label, pricing becomes qty × rate/m² despite being a 'unit'. Semantically acceptable per spec ('each side <100cm counts as 1 m') but worth confirming the pricing intent for small-side cases is unit-pricing, not m² pricing — current behavior still multiplies by the per-m² rate.",
+    "custom_projects.py:112-114 `if body.finishing and not est` only validates finishing when dims were not provided. Fine (estimate() already validates when dims exist) but the branch could be clearer.",
+    "custom_config.py:88 `estimate()` fetches finishing twice (direct find + wt['finishings'] membership). Minor duplication, not a bug.",
+    "RequestForm.jsx:30 debounced estimate GET recreates on every f.dims change (object identity) — OK with 250ms debounce.",
+    "custom_config.py:238 delete_finishing pulls from types but does not refresh module cache (no cache module-level in custom_config). OK.",
+    "No input validation for icon_image URL/data length in WorkTypeIn — admin trust boundary, acceptable."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_custom_projects.py"
+  ],
+  "success_rate": {"backend": "100% (26/26)", "frontend": "100% — all testids present & flows pass"},
+  "test_credentials": "POST /api/auth/demo {role: admin|contractor_buyer|supplier_vendor|designer_creator}",
+  "seed_data_creation": "Cleaned 53 TEST_ custom_projects + 1 testing-address project + any TEST_ work_types/finishings. Verified seeded types [kitchen_set,wardrobe,full_interior,wall_finish] order 0..3 active, finishings [hpl,duco] order 0..1 active — all restored.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Public config endpoint: GET /api/custom/config. Admin: /api/admin/custom-config, /api/admin/custom-work-types[/{key}], /api/admin/custom-finishings[/{key}], /api/admin/custom-config/reorder {kind:work_types|finishings, keys:[...]}. Estimate: POST /api/custom/estimate {work_type, finishing, dims:{p,l,t,area}} — all dims in cm (area in m²). Project create POST /api/custom/projects now takes `dims` instead of legacy `size`. Frontend testids: calc-type-{key}, calc-dim-{p|l|t|area}, calc-finishing-{key}, calc-range, calc-qty, calc-breakdown, calc-warning, calc-request-survey-button; request-type-select, request-dim-{p|l|t|area}, request-finishing-select, request-estimate, request-size-warning, request-budget-input, request-submit-button; admin-tab-customcfg → custom-config-manager → wt-add/fin-add dialogs + wt-row-{key}/fin-row-{key} with -up/-down/-toggle/-edit/-delete suffixes. wt-rate-min/max-{key} only render after wt-fin-{key} toggled on. Promo popup still appears first session load — close via [data-testid=promo-popup-close]."
+}
