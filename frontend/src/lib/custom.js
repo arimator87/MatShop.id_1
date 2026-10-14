@@ -5,12 +5,16 @@ import { api } from "@/lib/api";
 export const ICONS = { ChefHat, DoorClosed, Sofa, PaintRoller, Hammer, Armchair, Bath, BedDouble, Brush, Lamp, LayoutGrid, Ruler, Tv, Warehouse };
 
 let cache = null;
-export const resetCustomConfig = () => { cache = null; };
+let pending = null;
+export const resetCustomConfig = () => { cache = null; pending = null; };
 export const useCustomConfig = () => {
   const [cfg, setCfg] = useState(cache);
   useEffect(() => {
-    if (!cache) cache = api.get("/custom/config").then(({ data }) => data);
-    cache.then(setCfg);
+    if (cache) return setCfg(cache);
+    if (!pending) pending = api.get("/custom/config").then(({ data }) => { cache = data; return data; }).catch(() => { pending = null; return null; });
+    let alive = true;
+    pending.then((d) => alive && d && setCfg(d));
+    return () => { alive = false; };
   }, []);
   return cfg;
 };
