@@ -1,0 +1,25 @@
+{
+  "summary": "Iteration 15 testing — new ad placements (home_sections, dashboard) + admin 'Kelola Beranda' site-settings. Backend: 10/10 pytest passing. Frontend: home strips, sponsored cards in popular-grid & services-grid, vendor strip navigation to /vendor/user_showcase_workshop, dashboard top & bottom strips, admin SiteManager (hero text edit propagation, section hide for escrow, size guide), mobile 390px no overflow — all verified. Cleanup PUT applied (site_settings reset to {images:{}, hero:{}, sections:[]}).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iteration15.py",
+    "/app/test_reports/pytest/iter15.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "promos.py SiteIn.sections validator only enforces full 8-key set when non-empty; empty list is allowed as a reset path — ok, documented behavior.",
+    "SiteContext img() helper will throw if an image key not present in IMAGE_SLOTS is ever referenced (raw.images[k] fallback uses IMAGE_SLOTS[k].url). Non-blocking since keys are controlled.",
+    "AdStrip hides when slot >= ads.length (good). No skeleton while loading — brief flicker possible on slow networks; acceptable."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration15.py"
+  ],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "100% (all flows verified)"},
+  "test_credentials": "POST /api/auth/demo {role: admin|contractor_buyer|supplier_vendor|designer_creator}",
+  "seed_data_creation": "Created & deleted one TEST brand ad with placements home_sections+dashboard during backend tests; cleaned up. Site settings temporarily modified during admin UI test then reset to defaults.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter15 feature set is green. Backend tests live at /app/backend/tests/test_iteration15.py. Public site-settings is {hero:{}, images:{}, sections:[]} (defaults). Promo popup still appears on first session load — close via [data-testid=promo-popup-close].",
+  "rca of the issue": "N/A — no bugs found."
+}

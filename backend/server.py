@@ -18,6 +18,7 @@ from invoice import build_invoice
 import custom_projects
 import reviews
 import promos
+import catalog
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -37,14 +38,6 @@ CATEGORIES = {
     "service": {"arsitektur": "Desain Arsitektur", "interior3d": "Desain Interior 3D Render",
                 "ded": "Gambar Kerja (DED)", "rab": "RAB Proyek"},
     "asset": {"skp": "SketchUp .skp", "d5": "D5 Render", "fbx": "FBX", "texture": "Textures / Materials"},
-}
-TABS = {
-    "all": {"type": "material"},
-    "plywood": {"category": {"$in": ["plywood", "hpl"]}},
-    "spc": {"category": {"$in": ["spc", "marmer"]}},
-    "wallpanel": {"category": {"$in": ["wallpanel", "lis"]}},
-    "services": {"type": "service"},
-    "assets": {"type": "asset"},
 }
 SHIP_METHODS = {"pickup": "Ambil Mandiri di Gudang Vendor", "vendor_cargo": "Pengiriman Kargo/Armada Vendor"}
 SERVICE_FEE = 2500
@@ -340,13 +333,13 @@ def public(listing: dict, include_file=False) -> dict:
     d = dict(listing)
     if not include_file:
         d.pop("file_url", None)
-    d["category_label"] = CATEGORIES.get(d["type"], {}).get(d["category"], d["category"])
+    d["category_label"] = catalog.LABELS.get(d["type"], {}).get(d["category"], d["category"])
     return d
 
 
 @api.get("/meta/categories")
 async def categories():
-    return CATEGORIES
+    return {t: {k: v for k, v in catalog.LABELS[t].items() if k in catalog.ACTIVE[t]} for t in catalog.TYPES}
 
 
 @api.get("/listings")
@@ -356,8 +349,8 @@ async def list_listings(tab: Optional[str] = None, type: Optional[str] = None, c
     flt = {"is_active": True}
     if owner:
         flt["owner_id"] = owner
-    if tab in TABS:
-        flt.update(TABS[tab])
+    if tab in catalog.TAB_FILTERS:
+        flt.update(catalog.TAB_FILTERS[tab])
     if type:
         flt["type"] = type
     if category:
@@ -379,7 +372,7 @@ async def get_listing(listing_id: str):
 
 
 def validate_listing(body: ListingIn, user: User):
-    if body.type not in CATEGORIES or body.category not in CATEGORIES[body.type]:
+    if body.type not in catalog.ACTIVE or body.category not in catalog.ACTIVE[body.type]:
         raise HTTPException(400, "Tipe/kategori tidak valid")
     if TYPE_ROLE[body.type] not in user.enabled_roles:
         raise HTTPException(403, "Role Anda tidak diizinkan membuat listing ini")
@@ -949,6 +942,8 @@ custom_projects.ctx.update(db=db, get_user=get_user)
 app.include_router(custom_projects.router)
 reviews.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify)
 app.include_router(reviews.router)
+catalog.ctx.update(db=db, get_user=get_user)
+app.include_router(catalog.router)
 promos.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify)
 app.include_router(promos.router)
 app.add_middleware(CORSMiddleware, allow_credentials=True,
@@ -959,6 +954,7 @@ app.add_middleware(CORSMiddleware, allow_credentials=True,
 async def startup():
     await seed(db)
     await promos.seed_promos(db)
+    await catalog.seed_catalog(db, CATEGORIES)
     await db.listings.create_index("listing_id", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.orders.create_index("order_id", unique=True)

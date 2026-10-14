@@ -23,15 +23,6 @@ export const ROLE_META = {
     perks: ["Etalase jasa profesional", "Jual aset .skp, D5, FBX", "Pembayaran via escrow"] },
 };
 
-export const TABS = [
-  { key: "all", label: "Semua Material" },
-  { key: "plywood", label: "Plywood & Sheet" },
-  { key: "spc", label: "SPC & Flooring" },
-  { key: "wallpanel", label: "WallPanel & WPC" },
-  { key: "services", label: "Jasa Desain 3D & RAB" },
-  { key: "assets", label: "Aset File 3D" },
-];
-
 export const STATUS_META = {
   awaiting_payment: { label: "Menunggu Pembayaran", code: "AWAITING_PAYMENT", cls: "bg-slate-100 text-slate-700" },
   held: { label: "Dana Ditahan (Escrow)", code: "ESCROW_HELD", cls: "bg-amber-100 text-amber-800" },
