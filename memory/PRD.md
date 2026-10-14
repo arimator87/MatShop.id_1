@@ -23,6 +23,7 @@ Marketplace hibrida B2B/B2C + Jasa/Aset Kreator "MatShop.id" (requested Next.js/
 ## Backlog
 - DONE: Custom Furniture & Fit-Out module: homepage banner + nav, /custom-project calculator (Kitchen Set/Wardrobe per m lari, Full Interior per m2, HPL/Duco), request form with photos, 'Peluang Proyek' tab (supplier & contractor) with RAB bidding, client accepts bid, milestone escrow 30/40/30 (pay → vendor report → client release) — backend custom_projects.py
 - DONE: Managed Open-Bid: client request (kategori, lokasi, est. budget, foto, detail) → PENDING_REVIEW_INTERNAL → admin Managed Project Board approve/reject → OPEN_FOR_BID → 'Project Board' tab, proposals with RAB + durasi + spesifikasi material → in-app notifications (bell) → client picks winner & pays DP 30% (m1)
+- DONE: Vendor verification: 'Profil Usaha & Portofolio' tab (nama usaha, alamat, link portofolio, foto, PIC) → users.verification_status PENDING; bidding locked (UI + backend 403) unless VERIFIED; admin 'Verifikasi Vendor' tab to VERIFY/REJECT (with note) + notifications
 - NEXT: milestone dispute to admin, vendor portfolio/rating for bids, survey scheduling
 - DONE: Admin mediation panel (/admin, refund_buyer→REFUNDED / release_vendor→COMPLETED), dispute photo evidence, cargo tracking (loading→departed→in_transit→arrived), NPWP tax info on checkout/order + invoice DPP/PPN 11%
 - P1: Real payment gateway (Midtrans/Xendit/Stripe), dispute flow, auto-release timer

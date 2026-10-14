@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 6 — fully tested vendor/contractor/designer business profile + verification gate feature. Added /app/backend/tests/test_vendor_verification.py (23 tests, all pass): BusinessProfileIn validation (422 for missing fields / empty photos), PUT /api/users/business-profile sets PENDING, resubmit from VERIFIED resets to PENDING, bidding gate (POST /custom/projects/{id}/bids returns 403 with exact message 'Profil usaha Anda harus diverifikasi oleh tim MatShop.id sebelum dapat mengajukan penawaran.' for null/PENDING/REJECTED and succeeds for VERIFIED), GET /api/admin/vendors admin-only with PENDING/VERIFIED/REJECTED/all filters, POST /api/admin/vendors/{id}/verify admin-only (400 for invalid status, 400 for REJECTED note<5, 404 for unknown user), notifications created on both verify and reject. Full regression: 105 passed, 1 skipped (pre-existing auto_release skip). Playwright E2E: logged in as contractor_buyer demo, navigated to /dashboard?tab=profil, verified dash-tab-contractor_buyer-profil + business-profile-form rendered, profile-submit-button disabled until all fields + >=1 photo uploaded, PUT returns PENDING and both profile-verify-status and dashboard-verify-badge show 'PENDING · Menunggu Verifikasi'. Created an open-for-bid project (designer as client + admin approve) — bid-verification-warning shown with exact Indonesian message and bid-submit-button disabled. Switched supplier to PENDING via resubmit and confirmed board-verification-warning renders on supplier /dashboard?tab=peluang. Logged in as admin, /admin -> admin-tab-vendors -> vendor-verification-board visible, all four filters (PENDING/VERIFIED/REJECTED/all) present, vendor-card-user_demo_buyer visible under PENDING, clicking vendor-verify-user_demo_buyer moves to VERIFIED filter with vendor-verified-check-user_demo_buyer rendered. Demo state fully restored (supplier/designer VERIFIED with original seed profiles, buyer pristine — no profile, no verification_status).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_vendor_verification.py",
+    "/app/backend/tests/test_custom_projects.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py BusinessProfileIn validation is well-constrained (min_length on each field, photos 1..10). Good.",
+    "save_business_profile correctly resets verification_status to PENDING on every submit (including from VERIFIED) and clears verification_note — matches spec 'resubmitting from VERIFIED resets to PENDING'.",
+    "custom_projects.submit_bid enforces user.verification_status == 'VERIFIED' with the exact spec message. Clients submitting bids for own project is still blocked first (400) which is correct ordering.",
+    "admin_vendors supports 'status=all' sentinel by only filtering when value is in VERIFY_STATUSES. Clean. Sort by submitted_at desc is helpful for operator UX.",
+    "admin_verify_vendor rejects note<5 chars for REJECTED and returns 404 for nonexistent vendor (matches spec). Notification links to /dashboard?tab=profil.",
+    "VerificationGate component reuses the exact backend message literal — single source of truth matches spec requirement.",
+    "ImagesField uses testid 'profile-photo'; the actual file input is 'profile-photo-input' as required by spec. Verified by Playwright upload.",
+    "Dashboard tab query-param (?tab=profil) is properly controlled; direct deep-link opens the Profil tab correctly.",
+    "Seed guard `verification_status: {$exists: False}` prevents re-seeding over admin-updated state on restart — good idempotency.",
+    "Minor: admin_verify_vendor sets verified_by to admin.name (display name). Consider also storing admin user_id for audit trail."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_vendor_verification.py (new, 23 tests)"
+  ],
+  "success_rate": {"backend": "100% (105 passed, 1 pre-existing skip)", "frontend": "100% — all gate, admin board, and badge selectors verified end-to-end"},
+  "test_credentials": "POST /api/auth/demo roles: contractor_buyer | supplier_vendor | designer_creator | admin",
+  "seed_data_creation": "Test runs created TEST_ project(s) + PENDING-state buyer; demo state restored post-test (supplier/designer VERIFIED with seed profiles, buyer pristine — business_profile:null, verification_status:null).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run with `REACT_APP_BACKEND_URL=https://matshop-3.preview.emergentagent.com MONGO_URL=mongodb://localhost:27017 DB_NAME=test_database python -m pytest backend/tests/ -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml`. test_vendor_verification.py MUST run serially (-n 0) because xdist loadscope splits classes across workers and the vendor-verification test classes share the global user state (resubmit toggles supplier VERIFIED->PENDING for one class, bid gate class requires supplier VERIFIED). Alternatively keep the module in a single xdist group. Key UI selectors: dash-tab-{role}-profil, business-profile-form, profile-{business-name|address|portfolio|pic-name|pic-phone}-input, profile-photo-input, profile-submit-button, profile-verify-status, dashboard-verify-badge, bid-verification-warning, board-verification-warning, admin-tab-vendors, vendor-verification-board, vendor-filter-{PENDING|VERIFIED|REJECTED|all}, vendor-card-{uid}, vendor-note-{uid}, vendor-verify-{uid}, vendor-reject-{uid}, vendor-verified-check-{uid}. Demo state is pristine as of this iteration.",
+  "rca of the issue": "N/A — no bugs."
+}
