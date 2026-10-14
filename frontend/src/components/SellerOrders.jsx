@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, errMsg } from "@/lib/api";
 import { OrderCard } from "@/components/OrderCard";
+import { TrackingUpdate } from "@/components/TrackingUpdate";
 
 const ShipAction = ({ o, onDone, isService }) => {
   const [note, setNote] = useState("");
@@ -42,7 +43,8 @@ export const SellerOrders = ({ isService }) => {
     <div className="space-y-5" data-testid="seller-orders-list">
       {orders.map((o) => (
         <OrderCard key={o.order_id} o={o} asBuyer={false}
-          actions={o.status === "held" ? <ShipAction o={o} onDone={load} isService={isService} /> : null} />
+          actions={o.status === "held" ? <ShipAction o={o} onDone={load} isService={isService} />
+            : o.status === "shipped" && o.shipping_method === "vendor_cargo" ? <TrackingUpdate o={o} onDone={load} /> : null} />
       ))}
     </div>
   );

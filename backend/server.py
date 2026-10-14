@@ -3,7 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -11,6 +11,7 @@ import os
 import uuid
 import logging
 import requests
+import re
 
 from seed import seed
 from invoice import build_invoice
@@ -46,6 +47,10 @@ SHIP_METHODS = {"pickup": "Ambil Mandiri di Gudang Vendor", "vendor_cargo": "Pen
 SERVICE_FEE = 2500
 AUTO_RELEASE_DAYS = 7
 CARGO_BASE_FEE = 50000
+ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
+TRACK_STAGES = {"loading": "Muat Barang di Gudang", "departed": "Armada Berangkat dari Gudang",
+                "in_transit": "Dalam Perjalanan", "arrived": "Tiba di Lokasi Proyek"}
+PPN_RATE = 0.11
 TYPE_ROLE = {"material": "supplier_vendor", "service": "designer_creator", "asset": "designer_creator"}
 
 
@@ -92,6 +97,8 @@ class User(BaseModel):
     primary_role: Optional[str] = None
     enabled_roles: List[str] = []
     active_role: Optional[str] = None
+    is_admin: bool = False
+    tax_profile: Optional[Dict[str, str]] = None
 
 
 class Tier(BaseModel):
@@ -138,6 +145,7 @@ class CheckoutIn(BaseModel):
     address: str = Field(min_length=5)
     notes: str = ""
     shipping: Dict[str, str] = {}
+    tax_info: Optional["TaxInfo"] = None
 
 
 class ShipIn(BaseModel):
@@ -147,6 +155,35 @@ class ShipIn(BaseModel):
 
 class DisputeIn(BaseModel):
     reason: str = Field(min_length=5)
+    evidence: List[str] = Field(default=[], max_length=6)
+
+
+class ResolveIn(BaseModel):
+    decision: str
+    note: str = Field(min_length=5)
+
+
+class TrackingIn(BaseModel):
+    stage: str
+    location: str = ""
+    note: str = ""
+
+
+class TaxInfo(BaseModel):
+    company_name: str = Field(min_length=2)
+    npwp: str
+    company_address: str = Field(min_length=5)
+
+    @field_validator("npwp")
+    @classmethod
+    def check_npwp(cls, v):
+        digits = re.sub(r"\D", "", v)
+        if len(digits) not in (15, 16):
+            raise ValueError("NPWP harus 15 atau 16 digit")
+        return digits
+
+
+CheckoutIn.model_rebuild()
 
 
 class SessionIn(BaseModel):
@@ -208,6 +245,8 @@ async def auth_session(body: SessionIn, response: Response):
         await db.users.insert_one({"user_id": user_id, "email": data["email"], "name": data["name"],
                                    "picture": data.get("picture", ""), "primary_role": None,
                                    "enabled_roles": [], "active_role": None, "created_at": now_iso()})
+    if data["email"].lower() in ADMIN_EMAILS:
+        await db.users.update_one({"user_id": user_id}, {"$set": {"is_admin": True}})
     await create_session(user_id, data["session_token"])
     set_cookie(response, data["session_token"])
     return User(**await db.users.find_one({"user_id": user_id}, {"_id": 0}))
@@ -218,12 +257,13 @@ async def auth_demo(body: RoleIn, response: Response):
     if os.environ.get("DEMO_LOGIN_ENABLED") != "true":
         raise HTTPException(403, "Demo login dinonaktifkan")
     ids = {"contractor_buyer": "user_demo_buyer", "supplier_vendor": "user_demo_supplier",
-           "designer_creator": "user_demo_designer"}
+           "designer_creator": "user_demo_designer", "admin": "user_demo_admin"}
     if body.role not in ids:
         raise HTTPException(400, "Role tidak valid")
     token = await create_session(ids[body.role])
     set_cookie(response, token)
-    await db.users.update_one({"user_id": ids[body.role]}, {"$set": {"active_role": body.role}})
+    if body.role != "admin":
+        await db.users.update_one({"user_id": ids[body.role]}, {"$set": {"active_role": body.role}})
     return {"user": User(**await db.users.find_one({"user_id": ids[body.role]}, {"_id": 0})), "token": token}
 
 
@@ -510,11 +550,14 @@ async def checkout(body: CheckoutIn, request: Request):
             "seller_name": its[0]["listing"]["owner_name"], "items": items, "items_total": items_total,
             "shipping_method": method, "shipping_cost": ship_cost, "warehouse_location": warehouse,
             "service_fee": SERVICE_FEE, "total": items_total + ship_cost, "status": "awaiting_payment",
-            "shipping": body.model_dump(exclude={"shipping"}),
+            "shipping": body.model_dump(exclude={"shipping", "tax_info"}),
+            "tax_info": body.tax_info.model_dump() if body.tax_info else None,
             "timeline": [event("awaiting_payment", "Pesanan dibuat, menunggu pembayaran")],
             "created_at": now_iso(),
         })
     await db.orders.insert_many(orders)
+    if body.tax_info:
+        await db.users.update_one({"user_id": user.user_id}, {"$set": {"tax_profile": body.tax_info.model_dump()}})
     await db.carts.update_one({"user_id": user.user_id}, {"$set": {"items": []}})
     fees = SERVICE_FEE * len(orders)
     grand = sum(o["total"] for o in orders) + fees
@@ -577,7 +620,9 @@ def for_viewer(o: dict, user_id: str) -> dict:
 
 
 async def find_order(order_id: str, user: User) -> dict:
-    flt = {"order_id": order_id, "$or": [{"buyer_id": user.user_id}, {"seller_id": user.user_id}]}
+    flt = {"order_id": order_id}
+    if not user.is_admin:
+        flt["$or"] = [{"buyer_id": user.user_id}, {"seller_id": user.user_id}]
     await run_auto_release(flt)
     o = await db.orders.find_one(flt, {"_id": 0})
     if not o:
@@ -621,6 +666,9 @@ async def ship_order(order_id: str, body: ShipIn, request: Request):
     if o["status"] != "held":
         raise HTTPException(400, "Pesanan tidak dalam status ESCROW_HELD")
     sets = {"status": "shipped", "seller_note": body.note, "shipped_at": now_iso(), "auto_release_at": auto_release_time()}
+    if o.get("shipping_method") == "vendor_cargo":
+        sets["tracking"] = [{"stage": "loading", "label": TRACK_STAGES["loading"], "location": o.get("warehouse_location") or "Gudang vendor", "note": "", "at": o.get("paid_at") or now_iso()},
+                            {"stage": "departed", "label": TRACK_STAGES["departed"], "location": o.get("warehouse_location") or "Gudang vendor", "note": body.note, "at": now_iso()}]
     if body.deliverable_url:
         sets["deliverable_url"] = body.deliverable_url
     await db.orders.update_one({"order_id": order_id}, {"$set": sets, "$push": {"timeline": event("shipped", body.note)}})
@@ -652,7 +700,7 @@ async def open_dispute(order_id: str, body: DisputeIn, request: Request):
         raise HTTPException(400, "Komplain hanya untuk transaksi dengan dana ditahan escrow")
     await db.orders.update_one({"order_id": order_id}, {
         "$set": {"status": "disputed", "pre_dispute_status": o["status"],
-                 "dispute": {"reason": body.reason, "opened_at": now_iso(), "status": "open"}},
+                 "dispute": {"reason": body.reason, "evidence": body.evidence, "opened_at": now_iso(), "status": "open"}},
         "$push": {"timeline": event("disputed", f"Komplain diajukan: {body.reason}. Pencairan dana ditahan hingga mediasi selesai")}})
     return await db.orders.find_one({"order_id": order_id}, {"_id": 0})
 
@@ -684,6 +732,98 @@ async def download_asset(order_id: str, listing_id: str, request: Request):
         raise HTTPException(404, "Aset tidak ada di pesanan ini")
     lst = await db.listings.find_one({"listing_id": listing_id}, {"_id": 0})
     return {"file_url": lst.get("file_url"), "title": lst["title"], "file_format": lst.get("file_format")}
+
+
+@api.post("/orders/{order_id}/tracking")
+async def add_tracking(order_id: str, body: TrackingIn, request: Request):
+    user = await get_user(request)
+    o = await db.orders.find_one({"order_id": order_id, "seller_id": user.user_id}, {"_id": 0})
+    if not o:
+        raise HTTPException(404, "Pesanan tidak ditemukan")
+    if o.get("shipping_method") != "vendor_cargo" or o["status"] != "shipped":
+        raise HTTPException(400, "Pelacakan hanya untuk pesanan kargo vendor yang sedang dikirim")
+    order = list(TRACK_STAGES)
+    if body.stage not in TRACK_STAGES:
+        raise HTTPException(400, "Tahap pengiriman tidak valid")
+    last = (o.get("tracking") or [{"stage": "loading"}])[-1]["stage"]
+    if order.index(body.stage) <= order.index(last) and body.stage != "in_transit":
+        raise HTTPException(400, "Tahap harus maju dari posisi terakhir")
+    if last == "arrived":
+        raise HTTPException(400, "Armada sudah tiba di lokasi proyek")
+    location = body.location or (o["shipping"].get("address") if body.stage == "arrived" else "")
+    entry = {"stage": body.stage, "label": TRACK_STAGES[body.stage], "location": location, "note": body.note, "at": now_iso()}
+    await db.orders.update_one({"order_id": order_id}, {"$push": {"tracking": entry}})
+    if body.stage == "arrived":
+        await db.orders.update_one({"order_id": order_id}, {"$push": {"timeline": event("shipped", "Armada tiba di lokasi proyek. Silakan cek & konfirmasi")}})
+    return await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+
+
+# ---------- Tax (NPWP) ----------
+@api.put("/users/tax-profile")
+async def save_tax_profile(body: TaxInfo, request: Request):
+    user = await get_user(request)
+    await db.users.update_one({"user_id": user.user_id}, {"$set": {"tax_profile": body.model_dump()}})
+    return User(**await db.users.find_one({"user_id": user.user_id}, {"_id": 0}))
+
+
+@api.put("/orders/{order_id}/tax-info")
+async def set_order_tax(order_id: str, body: TaxInfo, request: Request):
+    user = await get_user(request)
+    res = await db.orders.update_one({"order_id": order_id, "buyer_id": user.user_id},
+                                     {"$set": {"tax_info": body.model_dump()}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Pesanan tidak ditemukan")
+    await db.users.update_one({"user_id": user.user_id}, {"$set": {"tax_profile": body.model_dump()}})
+    return await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+
+
+# ---------- Admin mediation ----------
+async def require_admin(request: Request) -> User:
+    user = await get_user(request)
+    if not user.is_admin:
+        raise HTTPException(403, "Khusus admin MatShop")
+    return user
+
+
+@api.get("/admin/disputes")
+async def admin_disputes(request: Request, state: str = "open"):
+    await require_admin(request)
+    flt = {"dispute": {"$exists": True}}
+    if state == "open":
+        flt["status"] = "disputed"
+    elif state == "resolved":
+        flt["dispute.status"] = "resolved"
+    return await db.orders.find(flt, {"_id": 0}).sort("dispute.opened_at", -1).to_list(500)
+
+
+@api.get("/admin/stats")
+async def admin_stats(request: Request):
+    await require_admin(request)
+    disputed = await db.orders.find({"status": "disputed"}, {"_id": 0, "total": 1}).to_list(1000)
+    return {
+        "open": len(disputed), "frozen_amount": sum(o["total"] for o in disputed),
+        "refunded": await db.orders.count_documents({"dispute.decision": "refund_buyer"}),
+        "released": await db.orders.count_documents({"dispute.decision": "release_vendor"}),
+    }
+
+
+@api.post("/admin/orders/{order_id}/resolve")
+async def admin_resolve(order_id: str, body: ResolveIn, request: Request):
+    admin = await require_admin(request)
+    if body.decision not in ("refund_buyer", "release_vendor"):
+        raise HTTPException(400, "Keputusan tidak valid")
+    o = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not o or o["status"] != "disputed":
+        raise HTTPException(400, "Pesanan tidak dalam status DISPUTE")
+    refund = body.decision == "refund_buyer"
+    status = "refunded" if refund else "released"
+    note = (f"Mediasi selesai: dana {o['total'] + o.get('service_fee', 0):,.0f} dikembalikan ke buyer (MOCK refund)" if refund
+            else "Mediasi selesai: dana dirilis ke penjual") + f". Catatan admin: {body.note}"
+    sets = {"status": status, "dispute.status": "resolved", "dispute.decision": body.decision,
+            "dispute.admin_note": body.note, "dispute.resolved_at": now_iso(), "dispute.resolved_by": admin.name}
+    sets["refunded_at" if refund else "released_at"] = now_iso()
+    await db.orders.update_one({"order_id": order_id}, {"$set": sets, "$push": {"timeline": event(status, note)}})
+    return await db.orders.find_one({"order_id": order_id}, {"_id": 0})
 
 
 @api.get("/seller/stats")

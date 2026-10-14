@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { EscrowTimeline } from "@/components/EscrowTimeline";
 import { cargoEstimate, groupBySeller, ShippingPicker } from "@/components/ShippingPicker";
+import { emptyTax, TaxFields, taxValid } from "@/components/TaxFields";
 
 const Field = ({ label, ...p }) => (
   <label className="block space-y-1.5">
@@ -23,6 +24,8 @@ export default function Checkout() {
   const [f, setF] = useState({ recipient: user.name, phone: "", address: "", notes: "" });
   const [shipping, setShipping] = useState({});
   const [busy, setBusy] = useState(false);
+  const [needTax, setNeedTax] = useState(!!user.tax_profile);
+  const [tax, setTax] = useState(user.tax_profile || emptyTax);
   const on = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
   const groups = useMemo(() => groupBySeller(cart.items), [cart.items]);
@@ -39,7 +42,7 @@ export default function Checkout() {
     setBusy(true);
     try {
       const ship = Object.fromEntries(matGroups.map(([id]) => [id, methodOf(id)]));
-      const { data } = await api.post("/checkout", { ...f, shipping: ship });
+      const { data } = await api.post("/checkout", { ...f, shipping: ship, tax_info: needTax ? tax : null });
       navigate(`/bayar/${data.payment_id}`);
       refresh();
     } catch (err) {
@@ -70,6 +73,14 @@ export default function Checkout() {
             <p className="text-xs text-slate-500">Estimasi ongkir = biaya dasar armada {rupiah(50000)} + tarif kargo per unit dari vendor. Aset digital & jasa tidak memerlukan pengiriman.</p>
           </div>
         )}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4" data-testid="checkout-tax-section">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" checked={needTax} onChange={(e) => setNeedTax(e.target.checked)} data-testid="checkout-tax-toggle" className="mt-1 w-4 h-4 accent-amber-600" />
+            <span><span className="font-heading font-semibold">Butuh Faktur Pajak B2B (NPWP Perusahaan)</span>
+              <span className="block text-sm text-slate-600">Invoice PDF akan memuat identitas NPWP, DPP, dan PPN untuk pembukuan & klaim pajak.</span></span>
+          </label>
+          {needTax && <TaxFields value={tax} onChange={setTax} prefix="checkout-tax" />}
+        </div>
         <div className="bg-[#1E242B] text-white rounded-xl p-6 space-y-5 blueprint-grid-dark">
           <div className="flex items-center gap-3"><ShieldCheck className="w-6 h-6 text-amber-500" /><h2 className="font-heading font-semibold text-lg">Alur Escrow Payment</h2></div>
           <div className="bg-white rounded-lg p-4"><EscrowTimeline status="held" /></div>
@@ -90,7 +101,7 @@ export default function Checkout() {
         {matGroups.length > 0 && <div className="flex justify-between text-sm"><span className="text-slate-600">Estimasi ongkos kirim</span><span className="font-mono" data-testid="checkout-shipping-total">{rupiah(shipTotal)}</span></div>}
         <div className="flex justify-between text-sm"><span className="text-slate-600">Biaya layanan escrow ({Object.keys(groups).length} vendor)</span><span className="font-mono">{rupiah(fees)}</span></div>
         <div className="flex justify-between items-baseline border-t border-dashed pt-4"><span className="font-medium">Total Bayar</span><span className="font-heading text-2xl font-bold" data-testid="checkout-grand-total">{rupiah(cart.total + shipTotal + fees)}</span></div>
-        <button type="submit" disabled={busy} data-testid="checkout-submit-button"
+        <button type="submit" disabled={busy || (needTax && !taxValid(tax))} data-testid="checkout-submit-button"
           className="h-12 w-full rounded-full bg-amber-600 text-white font-semibold hover:bg-amber-700 transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60">
           {busy && <Loader2 className="w-4 h-4 animate-spin" />} Buat Pesanan & Bayar
         </button>

@@ -26,8 +26,8 @@ export default function Login() {
     try {
       const { data } = await api.post("/auth/demo", { role });
       setUser(data.user);
-      toast.success(`Masuk sebagai demo ${ROLE_META[role].short}`);
-      navigate("/dashboard");
+      toast.success(`Masuk sebagai demo ${ROLE_META[role]?.short || "Admin"}`);
+      navigate(role === "admin" ? "/admin" : "/dashboard");
     } catch (e) { toast.error(errMsg(e)); }
   };
 
@@ -54,6 +54,10 @@ export default function Login() {
               </button>
             ))}
           </div>
+          <button data-testid="demo-login-admin" onClick={() => demo("admin")}
+            className="w-full h-10 rounded-xl border border-dashed border-slate-300 text-xs font-semibold text-slate-600 hover:border-amber-600 transition-colors">
+            Masuk sebagai Admin Mediasi (demo)
+          </button>
         </div>
       </div>
       <div className="hidden lg:block rounded-2xl overflow-hidden h-[560px]"><img src={IMG} alt="" className="w-full h-full object-cover" /></div>

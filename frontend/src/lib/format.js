@@ -38,7 +38,15 @@ export const STATUS_META = {
   shipped: { label: "Dikirim / Diserahkan", code: "SHIPPED", cls: "bg-blue-100 text-blue-800" },
   disputed: { label: "Komplain · Mediasi", code: "DISPUTE", cls: "bg-red-100 text-red-700" },
   released: { label: "Selesai · Dana Dirilis", code: "COMPLETED", cls: "bg-green-100 text-green-800" },
+  refunded: { label: "Dana Dikembalikan ke Buyer", code: "REFUNDED", cls: "bg-purple-100 text-purple-800" },
 };
+
+export const TRACK_STAGES = [
+  { key: "loading", label: "Muat Barang di Gudang" },
+  { key: "departed", label: "Armada Berangkat dari Gudang" },
+  { key: "in_transit", label: "Dalam Perjalanan" },
+  { key: "arrived", label: "Tiba di Lokasi Proyek" },
+];
 
 export const SHIP_METHODS = {
   pickup: "Ambil Mandiri di Gudang Vendor",

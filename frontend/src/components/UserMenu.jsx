@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Check, LayoutDashboard, LogOut, Package } from "lucide-react";
+import { Check, Gavel, LayoutDashboard, LogOut, Package } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -55,6 +55,11 @@ export const UserMenu = () => {
         <DropdownMenuItem data-testid="menu-dashboard" onClick={() => navigate("/dashboard")} className="gap-2 cursor-pointer">
           <LayoutDashboard className="w-4 h-4" /> Dashboard
         </DropdownMenuItem>
+        {user.is_admin && (
+          <DropdownMenuItem data-testid="menu-admin" onClick={() => navigate("/admin")} className="gap-2 cursor-pointer text-amber-700">
+            <Gavel className="w-4 h-4" /> Panel Mediasi Admin
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem data-testid="menu-orders" onClick={() => navigate("/pesanan")} className="gap-2 cursor-pointer">
           <Package className="w-4 h-4" /> Pesanan Saya
         </DropdownMenuItem>

@@ -18,6 +18,7 @@ import Orders from "@/pages/Orders";
 import OrderDetail from "@/pages/OrderDetail";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
+import Admin from "@/pages/Admin";
 
 const guard = (el) => <ProtectedRoute>{el}</ProtectedRoute>;
 
@@ -39,6 +40,7 @@ function AppRouter() {
           <Route path="/pesanan" element={guard(<Orders />)} />
           <Route path="/pesanan/:orderId" element={guard(<OrderDetail />)} />
           <Route path="/dashboard" element={guard(<Dashboard />)} />
+          <Route path="/admin" element={guard(<Admin />)} />
         </Routes>
       </main>
       <Footer />

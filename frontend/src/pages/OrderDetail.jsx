@@ -6,7 +6,9 @@ import { rupiah, STATUS_META } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 import { EscrowTimeline } from "@/components/EscrowTimeline";
 import { OrderActions } from "@/components/OrderActions";
-import { openInvoice, ShippingInfo } from "@/components/OrderCard";
+import { DisputeInfo, openInvoice, ShippingInfo } from "@/components/OrderCard";
+import { TrackingTimeline } from "@/components/TrackingTimeline";
+import { TaxSection } from "@/components/TaxSection";
 
 const Row = ({ label, value, cls = "", testid }) => (
   <div className={`flex justify-between text-sm ${cls}`}><span className="text-slate-600">{label}</span><span className="font-mono" data-testid={testid}>{value}</span></div>
@@ -56,7 +58,7 @@ export default function OrderDetail() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8" data-testid="order-detail-page">
-      <Link to={isBuyer ? "/pesanan" : "/dashboard"} className="text-sm text-slate-600 inline-flex items-center gap-1 hover:text-slate-900"><ArrowLeft className="w-4 h-4" /> Kembali</Link>
+      <Link to={isBuyer ? "/pesanan" : user.is_admin && o.seller_id !== user.user_id ? "/admin" : "/dashboard"} className="text-sm text-slate-600 inline-flex items-center gap-1 hover:text-slate-900"><ArrowLeft className="w-4 h-4" /> Kembali</Link>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="text-xs font-mono uppercase tracking-widest text-amber-600 mb-2">Detail Pesanan</div>
@@ -83,6 +85,9 @@ export default function OrderDetail() {
       </div>
       <ItemsTable items={o.items} />
       <ShippingInfo o={o} />
+      <TrackingTimeline o={o} />
+      {o.dispute && <DisputeInfo o={o} />}
+      {(isBuyer || o.tax_info) && <TaxSection o={o} onSaved={setO} editable={isBuyer} />}
       <div className="grid md:grid-cols-2 gap-6 items-start">
         <div className="space-y-2 text-sm" data-testid="order-detail-history">
           <div className="text-xs font-mono uppercase tracking-wider text-slate-500 mb-2">Riwayat</div>

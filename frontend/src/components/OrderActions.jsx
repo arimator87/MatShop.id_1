@@ -4,15 +4,17 @@ import { Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, errMsg } from "@/lib/api";
+import { ImagesField } from "@/components/ListingForm";
 
 const DisputeDialog = ({ o, onDone }) => {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [evidence, setEvidence] = useState([]);
   const [busy, setBusy] = useState(false);
   const submit = async () => {
     setBusy(true);
     try {
-      await api.post(`/orders/${o.order_id}/dispute`, { reason });
+      await api.post(`/orders/${o.order_id}/dispute`, { reason, evidence });
       toast.success("Komplain diajukan. Dana ditahan hingga mediasi selesai");
       setOpen(false);
       onDone();
@@ -34,6 +36,10 @@ const DisputeDialog = ({ o, onDone }) => {
           <textarea data-testid="dispute-reason-input" value={reason} onChange={(e) => setReason(e.target.value)}
             placeholder="Jelaskan masalah: barang rusak, jumlah kurang, hasil desain tidak sesuai brief..."
             className="w-full h-28 p-3 rounded-lg border border-slate-300 outline-none focus:border-red-500 text-sm" />
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-slate-600">Bukti foto barang rusak / kurang (maks. 6)</div>
+            <ImagesField images={evidence} onChange={(v) => setEvidence(v.slice(0, 6))} testid="dispute-evidence" />
+          </div>
           <button data-testid="dispute-submit" onClick={submit} disabled={busy || reason.trim().length < 5}
             className="h-11 rounded-full bg-red-600 text-white font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50">
             {busy && <Loader2 className="w-4 h-4 animate-spin" />} Kirim Komplain

@@ -10,7 +10,8 @@ const LEVEL = { awaiting_payment: 0, held: 1, shipped: 2, released: 4 };
 
 export const EscrowTimeline = ({ status, preDispute }) => {
   const disputed = status === "disputed";
-  const level = disputed ? LEVEL[preDispute] ?? 1 : LEVEL[status] ?? 0;
+  const refunded = status === "refunded";
+  const level = disputed || refunded ? LEVEL[preDispute] ?? 1 : LEVEL[status] ?? 0;
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-4 gap-2" data-testid="escrow-timeline">
@@ -31,6 +32,11 @@ export const EscrowTimeline = ({ status, preDispute }) => {
           );
         })}
       </div>
+      {refunded && (
+        <div className="flex items-center gap-2 text-xs text-purple-800 bg-purple-50 border border-purple-200 rounded-md px-3 py-2" data-testid="escrow-refund-banner">
+          <ShieldAlert className="w-4 h-4 shrink-0" /> REFUNDED · Hasil mediasi: dana escrow dikembalikan ke buyer.
+        </div>
+      )}
       {disputed && (
         <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2" data-testid="escrow-dispute-banner">
           <ShieldAlert className="w-4 h-4 shrink-0" /> DISPUTE · Pencairan dana ke penjual dibekukan hingga mediasi selesai.

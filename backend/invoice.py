@@ -11,7 +11,14 @@ AMBER = colors.HexColor("#D97706")
 SUBTLE = colors.HexColor("#F1EFE9")
 SHIP_LABEL = {"pickup": "Ambil Mandiri di Gudang Vendor", "vendor_cargo": "Pengiriman Kargo/Armada Vendor"}
 STATUS = {"awaiting_payment": "AWAITING_PAYMENT", "held": "ESCROW_HELD", "shipped": "SHIPPED",
-          "disputed": "DISPUTE", "released": "COMPLETED"}
+          "disputed": "DISPUTE", "released": "COMPLETED", "refunded": "REFUNDED"}
+PPN_RATE = 0.11
+
+
+def fmt_npwp(n):
+    if len(n) == 15:
+        return f"{n[:2]}.{n[2:5]}.{n[5:8]}.{n[8]}-{n[9:12]}.{n[12:]}"
+    return n
 
 
 def rp(n):
@@ -43,8 +50,18 @@ def build_invoice(order: dict, seller: dict) -> bytes:
               colWidths=[87 * mm, 87 * mm],
               style=[("BACKGROUND", (0, 0), (-1, 0), SUBTLE), ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
                      ("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 6)]),
-        Spacer(1, 12),
+        Spacer(1, 8),
     ]
+    tax = order.get("tax_info")
+    if tax:
+        story += [Table([[Paragraph("<b>DATA PERPAJAKAN PEMBELI (FAKTUR PAJAK B2B)</b>", small)],
+                         [Paragraph(f"<b>{tax['company_name']}</b><br/>NPWP: <b>{fmt_npwp(tax['npwp'])}</b><br/>"
+                                    f"Alamat NPWP: {tax['company_address']}", body)]],
+                        colWidths=[174 * mm],
+                        style=[("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#FEF3C7")),
+                               ("BOX", (0, 0), (-1, -1), 0.5, AMBER), ("TOPPADDING", (0, 0), (-1, -1), 6)]),
+                  Spacer(1, 8)]
+    story.append(Spacer(1, 4))
 
     rows = [["Item", "Qty", "Harga Eceran", "Harga Satuan", "Diskon Grosir", "Subtotal"]]
     total_disc = 0
@@ -76,6 +93,11 @@ def build_invoice(order: dict, seller: dict) -> bytes:
         ["Biaya Layanan Escrow", rp(fee)],
         [Paragraph("<b>TOTAL TAGIHAN</b>", bold), Paragraph(f"<b>{rp(order['total'] + fee)}</b>", bold)],
     ]
+    if tax:
+        grand = order["total"] + fee
+        dpp = grand / (1 + PPN_RATE)
+        summary[-1:-1] = [["Dasar Pengenaan Pajak (DPP)", rp(dpp)],
+                    [f"PPN {int(PPN_RATE * 100)}% (termasuk dalam total)", rp(grand - dpp)]]
     st = Table(summary, colWidths=[110 * mm, 64 * mm])
     st.setStyle(TableStyle([("ALIGN", (1, 0), (1, -1), "RIGHT"), ("FONTSIZE", (0, 0), (-1, -1), 9),
                             ("LINEABOVE", (0, -1), (-1, -1), 1, AMBER), ("TOPPADDING", (0, -1), (-1, -1), 6)]))

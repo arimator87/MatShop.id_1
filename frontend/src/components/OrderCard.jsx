@@ -42,6 +42,28 @@ export const ShippingInfo = ({ o }) => {
   );
 };
 
+export const DisputeInfo = ({ o }) => {
+  const d = o.dispute;
+  const resolved = d.status === "resolved";
+  return (
+    <div className={`text-xs rounded-md p-3 space-y-2 ${resolved ? "bg-slate-50 text-slate-700 border border-slate-200" : "bg-red-50 text-red-800"}`} data-testid={`order-dispute-reason-${o.order_id}`}>
+      <div className="flex gap-2"><ShieldAlert className="w-4 h-4 shrink-0" /> Komplain buyer: {d.reason}{d.status === "withdrawn" && " (dibatalkan)"}</div>
+      {d.evidence?.length > 0 && (
+        <div className="flex flex-wrap gap-2" data-testid={`order-dispute-evidence-${o.order_id}`}>
+          {d.evidence.map((src, i) => (
+            <a key={i} href={imgSrc(src)} target="_blank" rel="noreferrer"><img src={imgSrc(src)} alt="bukti" className="w-16 h-16 rounded object-cover border" /></a>
+          ))}
+        </div>
+      )}
+      {resolved && (
+        <div data-testid={`order-dispute-resolution-${o.order_id}`}>
+          <b>Keputusan mediasi:</b> {d.decision === "refund_buyer" ? "Refund ke buyer" : "Dana dirilis ke vendor"} · {d.admin_note}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const OrderCard = ({ o, actions, asBuyer = true }) => {
   const st = STATUS_META[o.status];
   return (
@@ -69,11 +91,7 @@ export const OrderCard = ({ o, actions, asBuyer = true }) => {
           ))}
         </div>
         <ShippingInfo o={o} />
-        {o.dispute && o.status === "disputed" && (
-          <div className="text-xs bg-red-50 text-red-800 rounded-md p-3 flex gap-2" data-testid={`order-dispute-reason-${o.order_id}`}>
-            <ShieldAlert className="w-4 h-4 shrink-0" /> Komplain buyer: {o.dispute.reason}
-          </div>
-        )}
+        {o.dispute && <DisputeInfo o={o} />}
         {o.seller_note && <div className="text-xs bg-blue-50 text-blue-800 rounded-md p-3" data-testid={`order-note-${o.order_id}`}>Catatan penjual: {o.seller_note}</div>}
         {o.deliverable_url && (
           <a href={o.deliverable_url} target="_blank" rel="noreferrer" data-testid={`order-deliverable-${o.order_id}`}

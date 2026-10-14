@@ -14,7 +14,7 @@ const blank = (type) => ({
 const inputCls = "w-full h-10 px-3 rounded-lg border border-slate-300 bg-white outline-none focus:border-amber-600 text-sm";
 const F = ({ label, children }) => <label className="block space-y-1"><span className="text-xs font-medium text-slate-600">{label}</span>{children}</label>;
 
-const ImagesField = ({ images, onChange }) => {
+export const ImagesField = ({ images, onChange, testid = "listing-image" }) => {
   const [busy, setBusy] = useState(false);
   const upload = async (e) => {
     const file = e.target.files?.[0];
@@ -37,9 +37,9 @@ const ImagesField = ({ images, onChange }) => {
           <button type="button" onClick={() => onChange(images.filter((_, k) => k !== i))} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-white/90 grid place-items-center"><X className="w-3 h-3" /></button>
         </div>
       ))}
-      <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 grid place-items-center cursor-pointer hover:border-amber-600 text-slate-500" data-testid="listing-image-upload">
+      <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 grid place-items-center cursor-pointer hover:border-amber-600 text-slate-500" data-testid={`${testid}-upload`}>
         {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-        <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={upload} data-testid="listing-image-input" />
+        <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={upload} data-testid={`${testid}-input`} />
       </label>
     </div>
   );
