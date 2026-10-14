@@ -1,0 +1,27 @@
+{
+  "summary": "Tested promo popup banner + sponsored in-feed ads (iteration 13). 14/14 backend pytest cases pass covering /api/banners/active, admin banner CRUD (admin-only, activation deactivates others, invalid date order, 404), /api/ads list by placement, /ads/{id}/click counter, admin ad CRUD (invalid placement 400, empty placements 422, date order 400). Frontend Playwright on desktop (1920) + mobile (390) confirmed: popup shows on fresh session with image/close/dont-show-checkbox; closes and does not reappear during same session navigation; 'Jangan tampilkan lagi' persists across reloads via localStorage; image click navigates to /katalog?tab=all; no popup when banner deactivated via admin API. Catalog grid renders sponsored-card after every 4 products; home-catalog-grid capped to 8 cards incl. 1 sponsor; mobile 390px shows 2 columns incl. sponsor with no horizontal overflow (scrollWidth=clientWidth=390). Admin /admin -> Banner & Iklan tab exposes banner-manager, banner-new, ad-manager, ad-new and all per-row controls. Sponsored click counter incremented (verified via admin list showing 'klik' totals and backend GET).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin header", "issues": ["Avatar shows role 'DESAINER' badge when logged in as admin via demo (cosmetic; admin tabs still accessible)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_promos.py", "/app/test_reports/pytest/promos.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PromoPopup uses localStorage key that includes banner.updated_at so edits re-trigger popup even if user previously opted out — intentional per spec (confirmed working).",
+    "live_filter() in promos.py uses WIB date string comparison; relies on string ordering which works for ISO yyyy-mm-dd, OK.",
+    "GET /api/ads has no auth and POST /ads/{id}/click is unauthenticated — acceptable (public click tracking) but susceptible to click inflation; consider rate-limiting (future enhancement).",
+    "admin-tab role check: admin tab visibility relies on is_admin cookie/token. During testing the avatar badge displayed 'DESAINER' but admin tabs rendered correctly — verify Admin.jsx role display source."
+  ],
+  "updated_files": ["/app/backend/tests/test_promos.py"],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "100% (all flows passed)"},
+  "test_credentials": "POST /api/auth/demo {role: admin|contractor_buyer}",
+  "seed_data_creation": "No persistent test data left; test banners/ads created during tests were deleted. Seed state (bnr_demo_grosir active, ad_demo_cat & ad_demo_hardware active) verified intact post-run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Popup overlay z-60 appears on every fresh browser session on '/'; must close with [data-testid=promo-popup-close] or pre-populate sessionStorage/localStorage key mshop_popup_bnr_demo_grosir_<updated_at> before interacting with other UI. Admin auth: fetch POST /api/auth/demo {role:admin}, then set localStorage mshop_token and cookie session_token.",
+  "rca of the issue": "N/A — all tested features work as specified."
+}
