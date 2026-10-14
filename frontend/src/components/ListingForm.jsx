@@ -14,7 +14,7 @@ const blank = (type) => ({
 const inputCls = "w-full h-10 px-3 rounded-lg border border-slate-300 bg-white outline-none focus:border-amber-600 text-sm";
 const F = ({ label, children }) => <label className="block space-y-1"><span className="text-xs font-medium text-slate-600">{label}</span>{children}</label>;
 
-export const ImagesField = ({ images, onChange, testid = "listing-image" }) => {
+export const ImagesField = ({ images, onChange, testid = "listing-image", privateUpload = false }) => {
   const [busy, setBusy] = useState(false);
   const upload = async (e) => {
     const file = e.target.files?.[0];
@@ -23,7 +23,7 @@ export const ImagesField = ({ images, onChange, testid = "listing-image" }) => {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const { data } = await api.post("/uploads", fd);
+      const { data } = await api.post("/uploads", fd, { params: privateUpload ? { private: true } : {} });
       onChange([...images, data.url]);
     } catch (err) { toast.error(errMsg(err)); }
     setBusy(false);

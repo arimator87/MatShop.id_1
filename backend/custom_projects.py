@@ -235,8 +235,8 @@ async def get_project(project_id: str, request: Request):
         if not is_vendor:
             p.pop("phone", None)
     meta = await reviews.badges([b["vendor_id"] for b in bids])
-    verified = {u["user_id"]: u.get("verification_status") for u in await db().users.find(
-        {"user_id": {"$in": [b["vendor_id"] for b in bids]}}, {"_id": 0, "user_id": 1, "verification_status": 1}).to_list(100)}
+    verified = {u["user_id"]: ((u.get("role_verifications") or {}).get("contractor") or {}).get("status") for u in await db().users.find(
+        {"user_id": {"$in": [b["vendor_id"] for b in bids]}}, {"_id": 0, "user_id": 1, "role_verifications.contractor.status": 1}).to_list(100)}
     for b in bids:
         m = meta[b["vendor_id"]]
         b["vendor_rating"], b["vendor_review_count"], b["vendor_top_rated"] = m["rating"], m["review_count"], m["top_rated"]
@@ -256,8 +256,8 @@ async def submit_bid(project_id: str, body: BidIn, request: Request):
     if p["client_id"] == user.user_id:
         raise HTTPException(400, "Tidak bisa menawar proyek sendiri")
     ensure_active(user)
-    if user.verification_status != "VERIFIED":
-        raise HTTPException(403, "Profil usaha Anda harus diverifikasi oleh tim MatShop.id sebelum dapat mengajukan penawaran.")
+    if "contractor" not in user.enabled_roles:
+        raise HTTPException(403, "Aktifkan peran Kontraktor / Workshop (isi form verifikasi) untuk mengajukan penawaran.")
     if p["status"] != "open":
         raise HTTPException(400, "Proyek tidak lagi menerima penawaran")
     items = [{**i.model_dump(), "subtotal": i.qty * i.price} for i in body.rab_items]

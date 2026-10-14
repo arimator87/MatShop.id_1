@@ -14,6 +14,7 @@ export const UserMenu = () => {
   const active = ROLE_META[user.active_role];
 
   const onSwitch = async (role) => {
+    if (ROLE_META[role].gated && !user.enabled_roles.includes(role)) return navigate(`/aktivasi/${ROLE_META[role].gated}`);
     await switchRole(role);
     toast.success(`Beralih ke mode ${ROLE_META[role].short}`);
     navigate("/dashboard");
@@ -48,7 +49,7 @@ export const UserMenu = () => {
             <m.icon className="w-4 h-4" />
             <span className="flex-1">{m.label}</span>
             {user.active_role === key && <Check className="w-4 h-4 text-amber-600" />}
-            {!user.enabled_roles.includes(key) && <span className="text-[10px] text-slate-400">aktifkan</span>}
+            {!user.enabled_roles.includes(key) && <span className="text-[10px] text-slate-400">{m.gated ? "verifikasi" : "aktifkan"}</span>}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />

@@ -6,7 +6,6 @@ import { CartProvider } from "@/context/CartContext";
 import { SiteProvider } from "@/context/SiteContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { OnboardingModal } from "@/components/OnboardingModal";
 import { AuthCallback } from "@/components/AuthCallback";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PromoPopup } from "@/components/promo/PromoPopup";
@@ -25,6 +24,7 @@ import CustomProject from "@/pages/CustomProject";
 import CustomProjectRequest from "@/pages/CustomProjectRequest";
 import CustomProjectDetail from "@/pages/CustomProjectDetail";
 import VendorProfile from "@/pages/VendorProfile";
+import Activation from "@/pages/Activation";
 import Portfolio from "@/pages/Portfolio";
 
 const guard = (el) => <ProtectedRoute>{el}</ProtectedRoute>;
@@ -50,13 +50,13 @@ function AppRouter() {
           <Route path="/admin" element={guard(<Admin />)} />
           <Route path="/vendor/:id" element={<VendorProfile />} />
           <Route path="/portofolio" element={<Portfolio />} />
+          <Route path="/aktivasi/:slug" element={guard(<Activation />)} />
           <Route path="/custom-project" element={<CustomProject />} />
           <Route path="/custom-project/ajukan" element={guard(<CustomProjectRequest />)} />
           <Route path="/custom-project/:projectId" element={guard(<CustomProjectDetail />)} />
         </Routes>
       </main>
       <Footer />
-      <OnboardingModal />
       <PromoPopup />
     </div>
   );

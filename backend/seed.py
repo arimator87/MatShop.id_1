@@ -30,19 +30,19 @@ I = {
 
 DEMO_USERS = [
     {"user_id": "user_demo_buyer", "email": "kontraktor@matshop.id", "name": "CV Bangun Jaya (Kontraktor)",
-     "primary_role": "contractor_buyer", "enabled_roles": ["contractor_buyer"]},
+     "primary_role": "buyer", "enabled_roles": ["buyer"]},
     {"user_id": "user_demo_supplier", "email": "supplier@matshop.id", "name": "PT Material Nusantara",
-     "primary_role": "supplier_vendor", "enabled_roles": ["supplier_vendor", "contractor_buyer"]},
+     "primary_role": "supplier_vendor", "enabled_roles": ["supplier_vendor", "buyer", "contractor"]},
     {"user_id": "user_demo_designer", "email": "desainer@matshop.id", "name": "Studio Ruang Arsitek",
-     "primary_role": "designer_creator", "enabled_roles": ["designer_creator", "contractor_buyer"]},
+     "primary_role": "designer_creator", "enabled_roles": ["designer_creator", "buyer"]},
     {"user_id": "user_master_workshop", "email": "workshop@matshop.id", "name": "Master Workshop MatShop",
-     "primary_role": "supplier_vendor", "enabled_roles": ["supplier_vendor"], "verification_status": "VERIFIED"},
+     "primary_role": "supplier_vendor", "enabled_roles": ["supplier_vendor", "contractor", "buyer"], "verification_status": "VERIFIED"},
     {"user_id": "user_showcase_workshop", "email": "kayurupa@matshop.id", "name": "Kayu Rupa Workshop",
-     "primary_role": "supplier_vendor", "enabled_roles": ["supplier_vendor", "contractor_buyer"]},
+     "primary_role": "contractor", "enabled_roles": ["contractor", "supplier_vendor", "buyer"]},
     {"user_id": "user_showcase_interior", "email": "ruangkita@matshop.id", "name": "Ruang Kita Interior",
-     "primary_role": "designer_creator", "enabled_roles": ["designer_creator", "contractor_buyer"]},
+     "primary_role": "designer_creator", "enabled_roles": ["designer_creator", "contractor", "buyer"]},
     {"user_id": "user_demo_admin", "email": "admin@matshop.id", "name": "Admin Mediasi MatShop",
-     "primary_role": "contractor_buyer", "enabled_roles": ["contractor_buyer"], "is_admin": True},
+     "primary_role": "buyer", "enabled_roles": ["buyer"], "is_admin": True},
 ]
 
 S = ("user_demo_supplier", "PT Material Nusantara")

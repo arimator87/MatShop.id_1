@@ -38,7 +38,7 @@ export default function Login() {
         <Logo />
         <div>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Masuk / Daftar</h1>
-          <p className="text-slate-600 mt-3">Satu akun untuk semua peran — Kontraktor, Supplier, dan Desainer. Pilih peran utama setelah login pertama.</p>
+          <p className="text-slate-600 mt-3">Satu akun untuk semua peran. Akun baru otomatis menjadi Pembeli — aktifkan peran Vendor, Desainer, atau Kontraktor kapan saja dari menu profil.</p>
         </div>
         <button data-testid="google-login-button" onClick={google}
           className="w-full h-12 rounded-full border border-slate-300 bg-white font-semibold inline-flex items-center justify-center gap-3 hover:border-slate-900 transition-colors">
@@ -46,7 +46,7 @@ export default function Login() {
         </button>
         <div className="space-y-3">
           <div className="text-xs font-mono uppercase tracking-widest text-slate-500">Atau coba akun demo</div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {Object.entries(ROLE_META).map(([k, m]) => (
               <button key={k} data-testid={`demo-login-${k}`} onClick={() => demo(k)}
                 className="p-3 rounded-xl border border-slate-200 bg-white hover:border-amber-600 transition-colors text-left">

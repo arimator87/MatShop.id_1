@@ -18,6 +18,7 @@ import { AdManager } from "@/components/promo/AdManager";
 import { SiteManager } from "@/components/promo/SiteManager";
 import { CatalogManager } from "@/components/catalog/CatalogManager";
 import { CustomConfigManager } from "@/components/custom/CustomConfigManager";
+import { PartnerVerificationBoard } from "@/components/partner/PartnerVerificationBoard";
 
 const DECISIONS = {
   refund_buyer: { label: "Refund ke Buyer", icon: RotateCcw, cls: "bg-purple-600 hover:bg-purple-700" },
@@ -92,6 +93,7 @@ export default function Admin() {
         <TabsTrigger value="vendors" data-testid="admin-tab-vendors" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Verifikasi Vendor</TabsTrigger>
         <TabsTrigger value="reviews" data-testid="admin-tab-reviews" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Ulasan Vendor</TabsTrigger>
         <TabsTrigger value="site" data-testid="admin-tab-site" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Kelola Beranda</TabsTrigger>
+        <TabsTrigger value="partners" data-testid="admin-tab-partners" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Verifikasi Partner</TabsTrigger>
         <TabsTrigger value="catalog" data-testid="admin-tab-catalog" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Kategori Katalog</TabsTrigger>
         <TabsTrigger value="customcfg" data-testid="admin-tab-customcfg" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Custom Furniture</TabsTrigger>
         <TabsTrigger value="promo" data-testid="admin-tab-promo" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Banner & Iklan</TabsTrigger>
@@ -102,6 +104,7 @@ export default function Admin() {
       <TabsContent value="vendors" className="mt-6"><VendorVerificationBoard /></TabsContent>
       <TabsContent value="reviews" className="mt-6 space-y-10"><ReviewReportBoard /><AdminReviewBoard /></TabsContent>
       <TabsContent value="site" className="mt-6"><SiteManager /></TabsContent>
+      <TabsContent value="partners" className="mt-6"><PartnerVerificationBoard /></TabsContent>
       <TabsContent value="catalog" className="mt-6"><CatalogManager /></TabsContent>
       <TabsContent value="customcfg" className="mt-6"><CustomConfigManager /></TabsContent>
       <TabsContent value="promo" className="mt-6 space-y-12"><BannerManager /><AdManager /></TabsContent>

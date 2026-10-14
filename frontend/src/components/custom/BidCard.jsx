@@ -14,6 +14,9 @@ export const BidCard = ({ bid, canAccept, onAccept, compare }) => {
           <div className="font-heading font-semibold">{bid.vendor_name}</div>
           <div className="flex flex-wrap items-center gap-2 my-1">
             <TopRatedBadge show={bid.vendor_top_rated} testid={`bid-top-rated-${bid.bid_id}`} />
+            {bid.vendor_verified
+              ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold" data-testid={`bid-verified-${bid.bid_id}`}>Verified Partner</span>
+              : <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold" data-testid={`bid-unverified-${bid.bid_id}`}>Belum Terverifikasi</span>}
             <RatingBadge avg={bid.vendor_rating || 0} count={bid.vendor_review_count || 0} testid={`bid-rating-${bid.bid_id}`} />
             <Link to={`/vendor/${bid.vendor_id}`} target="_blank" rel="noopener noreferrer" data-testid={`bid-vendor-profile-${bid.bid_id}`} className="text-xs font-semibold text-amber-700 hover:underline">Lihat Profil</Link>
           </div>

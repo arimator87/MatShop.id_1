@@ -5,6 +5,7 @@ export const VERIFY_META = {
   PENDING: { label: "PENDING · Menunggu Verifikasi", icon: Clock, cls: "bg-amber-100 text-amber-800" },
   VERIFIED: { label: "VERIFIED · Terverifikasi", icon: BadgeCheck, cls: "bg-green-100 text-green-800" },
   REJECTED: { label: "REJECTED · Ditolak", icon: ShieldX, cls: "bg-red-100 text-red-700" },
+  UNVERIFIED: { label: "Belum Terverifikasi", icon: Clock, cls: "bg-amber-100 text-amber-800" },
 };
 
 export const VerifyBadge = ({ status, testid = "verify-badge" }) => {

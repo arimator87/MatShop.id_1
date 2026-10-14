@@ -20,6 +20,7 @@ import reviews
 import promos
 import catalog
 import custom_config
+import partners
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -32,7 +33,8 @@ api = APIRouter(prefix="/api")
 logger = logging.getLogger("matshop")
 logging.basicConfig(level=logging.INFO)
 
-ROLES = ["contractor_buyer", "supplier_vendor", "designer_creator"]
+ROLES = ["buyer", "supplier_vendor", "designer_creator", "contractor"]
+GATED_ROLES = ("designer_creator", "contractor")
 CATEGORIES = {
     "material": {"plywood": "Plywood / Multiplek", "hpl": "HPL", "spc": "SPC Flooring", "marmer": "Marmer / Granit",
                  "wallpanel": "WallPanel WPC/PVC", "lis": "Lis Profil", "furniture": "Loose Furniture"},
@@ -101,6 +103,7 @@ class User(BaseModel):
     verification_note: Optional[str] = None
     favorite_vendor_ids: List[str] = []
     business_profile: Optional[dict] = None
+    role_verifications: Optional[dict] = None
     tax_profile: Optional[Dict[str, str]] = None
 
 
@@ -262,8 +265,8 @@ async def auth_session(body: SessionIn, response: Response):
     else:
         user_id = f"user_{uuid.uuid4().hex[:12]}"
         await db.users.insert_one({"user_id": user_id, "email": data["email"], "name": data["name"],
-                                   "picture": data.get("picture", ""), "primary_role": None,
-                                   "enabled_roles": [], "active_role": None, "created_at": now_iso()})
+                                   "picture": data.get("picture", ""), "primary_role": "buyer",
+                                   "enabled_roles": ["buyer"], "active_role": "buyer", "created_at": now_iso()})
     if data["email"].lower() in ADMIN_EMAILS:
         await db.users.update_one({"user_id": user_id}, {"$set": {"is_admin": True}})
     await create_session(user_id, data["session_token"])
@@ -275,8 +278,10 @@ async def auth_session(body: SessionIn, response: Response):
 async def auth_demo(body: RoleIn, response: Response):
     if os.environ.get("DEMO_LOGIN_ENABLED") != "true":
         raise HTTPException(403, "Demo login dinonaktifkan")
-    ids = {"contractor_buyer": "user_demo_buyer", "supplier_vendor": "user_demo_supplier",
-           "designer_creator": "user_demo_designer", "admin": "user_demo_admin"}
+    ids = {"buyer": "user_demo_buyer", "supplier_vendor": "user_demo_supplier", "designer_creator": "user_demo_designer",
+           "contractor": "user_showcase_workshop", "admin": "user_demo_admin"}
+    if body.role == "contractor_buyer":
+        body.role = "buyer"
     if body.role not in ids:
         raise HTTPException(400, "Role tidak valid")
     token = await create_session(ids[body.role])
@@ -305,7 +310,9 @@ async def onboarding(body: RoleIn, request: Request):
     user = await get_user(request)
     if body.role not in ROLES:
         raise HTTPException(400, "Role tidak valid")
-    roles = list(dict.fromkeys([body.role, "contractor_buyer", *user.enabled_roles]))
+    if body.role in GATED_ROLES and body.role not in user.enabled_roles:
+        raise HTTPException(403, "Lengkapi form verifikasi untuk mengaktifkan peran ini")
+    roles = list(dict.fromkeys([body.role, "buyer", *user.enabled_roles]))
     await db.users.update_one({"user_id": user.user_id},
                               {"$set": {"primary_role": body.role, "enabled_roles": roles, "active_role": body.role}})
     return User(**await db.users.find_one({"user_id": user.user_id}, {"_id": 0}))
@@ -316,9 +323,15 @@ async def switch_role(body: RoleIn, request: Request):
     user = await get_user(request)
     if body.role not in ROLES:
         raise HTTPException(400, "Role tidak valid")
+    if body.role in GATED_ROLES and body.role not in user.enabled_roles:
+        raise HTTPException(403, "Lengkapi form verifikasi untuk mengaktifkan peran ini")
     await db.users.update_one({"user_id": user.user_id},
                               {"$set": {"active_role": body.role}, "$addToSet": {"enabled_roles": body.role}})
     return User(**await db.users.find_one({"user_id": user.user_id}, {"_id": 0}))
+
+
+async def user_out(user_id):
+    return User(**await db.users.find_one({"user_id": user_id}, {"_id": 0}))
 
 
 # ---------- Listings ----------
@@ -431,26 +444,33 @@ ALLOWED_IMG = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 
 
 @api.post("/uploads")
-async def upload(request: Request, file: UploadFile = File(...)):
+async def upload(request: Request, file: UploadFile = File(...), private: bool = False):
     user = await get_user(request)
     if file.content_type not in ALLOWED_IMG:
         raise HTTPException(400, "Hanya JPG/PNG/WEBP")
     data = await file.read()
     if len(data) > 8 * 1024 * 1024:
         raise HTTPException(400, "Maksimal 8MB")
-    path = f"{APP_NAME}/uploads/{user.user_id}/{uuid.uuid4()}.{ALLOWED_IMG[file.content_type]}"
+    folder = "private" if private else "uploads"
+    path = f"{APP_NAME}/{folder}/{user.user_id}/{uuid.uuid4()}.{ALLOWED_IMG[file.content_type]}"
     result = await run_in_threadpool(put_object, path, data, file.content_type)
     await db.files.insert_one({"id": str(uuid.uuid4()), "storage_path": result["path"], "owner_id": user.user_id,
                                "original_filename": file.filename, "content_type": file.content_type,
-                               "size": result.get("size"), "is_deleted": False, "created_at": now_iso()})
+                               "size": result.get("size"), "is_deleted": False, "private": private, "created_at": now_iso()})
     return {"path": result["path"], "url": f"/api/files/{result['path']}"}
 
 
 @api.get("/files/{path:path}")
-async def serve_file(path: str):
+async def serve_file(path: str, request: Request):
     record = await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
     if not record:
         raise HTTPException(404, "File tidak ditemukan")
+    if record.get("private"):
+        viewer = await get_user(request)
+        if viewer.user_id != record["owner_id"] and not viewer.is_admin:
+            raise HTTPException(403, "Dokumen privat")
+        data, ct = await run_in_threadpool(get_object, path)
+        return Response(content=data, media_type=record.get("content_type", ct), headers={"Cache-Control": "private, no-store"})
     data, ct = await run_in_threadpool(get_object, path)
     return Response(content=data, media_type=record.get("content_type", ct),
                     headers={"Cache-Control": "public, max-age=86400"})
@@ -946,6 +966,8 @@ app.include_router(reviews.router)
 catalog.ctx.update(db=db, get_user=get_user)
 app.include_router(catalog.router)
 custom_config.ctx.update(db=db, get_user=get_user)
+partners.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify, user_out=user_out)
+app.include_router(partners.router)
 app.include_router(custom_config.router)
 promos.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify)
 app.include_router(promos.router)
@@ -959,6 +981,7 @@ async def startup():
     await promos.seed_promos(db)
     await catalog.seed_catalog(db, CATEGORIES)
     await custom_config.seed_custom_config(db)
+    await partners.seed_partners(db)
     await db.listings.create_index("listing_id", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.orders.create_index("order_id", unique=True)
