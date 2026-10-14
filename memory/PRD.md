@@ -21,7 +21,7 @@ Marketplace hibrida B2B/B2C + Jasa/Aset Kreator "MatShop.id" (requested Next.js/
 - Shipping options per vendor (Ambil Mandiri / Kargo Vendor, estimate = 50k + fee/unit), dispute flow (DISPUTE freezes funds, blocks release & 7-day auto-release, buyer can withdraw), order detail page + Invoice PDF (reportlab), watermark preview for assets/services, original files only after COMPLETED
 
 ## Backlog
-- P0: Admin mediation panel to resolve DISPUTE (refund buyer / release to vendor)
+- DONE: Admin mediation panel (/admin, refund_buyer→REFUNDED / release_vendor→COMPLETED), dispute photo evidence, cargo tracking (loading→departed→in_transit→arrived), NPWP tax info on checkout/order + invoice DPP/PPN 11%
 - P1: Real payment gateway (Midtrans/Xendit/Stripe), dispute flow, auto-release timer
 - P1: Reviews & ratings, seller profile/storefront pages
 - P2: Quote request (RFQ) for B2B bulk, shipping cost calculator, chat buyer-seller

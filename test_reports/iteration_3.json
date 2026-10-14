@@ -1,0 +1,52 @@
+{
+  "summary": "Iteration 3 — end-to-end tested the four new features (Panel Mediasi Admin, Bukti Foto Komplain, Lacak Pengiriman cargo tracking, Faktur Pajak NPWP B2B) plus regression. Added /app/backend/tests/test_iteration3.py (23 tests). Combined suite: 56 passed, 1 skipped (auto-release-time backdating). Frontend verified via Playwright: admin page, stats, filters, dispute cards with evidence thumbs, resolve dialog with note-validation + refund_buyer decision (REFUNDED badge appears); menu-admin item in UserMenu for admin; direct /admin blocked for non-admin (backend 403); checkout tax-section (toggle + fields + NPWP 15/16-digit validation + submit-disable) works; order detail page shows order-tax-section (edit→save→PUT /orders/:id/tax-info), tracking-timeline + tracking-stage pills + tracking-current for vendor_cargo orders; SellerOrders Pesanan Masuk shows TrackingUpdate (tracking-stage-select / tracking-location / tracking-submit) for shipped cargo orders.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/orders/:id/dispute", "issue": "Short reason or >6 evidence returns 422 from Pydantic rather than 400 (same inconsistency flagged in iter 2)"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Login.jsx",
+        "issue": "Clicking data-testid=demo-login-admin navigates to /dashboard instead of /admin. Root cause: setUser(data.user) triggers re-render and the top-level guard `if (user) return <Navigate to=\"/dashboard\" replace />` wins over the imperative navigate(\"/admin\") call. Reproduced consistently; whoami confirms is_admin=true but URL lands on /dashboard. Admin page itself is fully functional when reached via direct URL navigation or via menu-admin link.",
+        "selector": "[data-testid=demo-login-admin]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_iteration3.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix Login.jsx admin redirect race: change guard to `if (user) return <Navigate to={user.is_admin ? '/admin' : '/dashboard'} replace />` and/or call navigate() before setUser(). Current code sends admins to /dashboard on first demo-login click.",
+    "(Optional, carried over) Make dispute payload min_length/max_length return 400 instead of 422 for consistency with business-rule errors."
+  ],
+  "critical_code_review_comments": [
+    "server.py admin_resolve correctly guards on status==disputed and validates decision whitelist; uses $set to mark dispute.status=resolved + decision + admin_note + resolved_by/at. Sets order status to refunded|released and adds timeline event. Good.",
+    "server.py find_order admits admins to any order (bypasses buyer_id/seller_id filter). This is why /orders/:id and /orders/:id/invoice.pdf work for admin on third-party orders — correct.",
+    "server.py add_tracking enforces forward-only stage order (allows in_transit repetition), rejects after 'arrived', rejects pickup orders, and defaults location to shipping.address for 'arrived'. All verified by tests.",
+    "server.py checkout saves tax_info on order AND on user.tax_profile (prefill for next time). TaxInfo validator strips punctuation and requires 15/16 digits.",
+    "invoice.py adds NPWP block + DPP/PPN rows when tax_info present; total treated as PPN-inclusive (DPP = total/1.11). PDF built OK (verified %PDF header).",
+    "Admin.jsx is self-guarded with <Navigate to=\"/\" /> when !user.is_admin — correct second line of defense.",
+    "Login.jsx has a race between setUser + <Navigate> guard and imperative navigate('/admin'); the Navigate guard currently wins (see HIGH bug above).",
+    "DEMO_LOGIN_ENABLED is used in production path too — fine for staging, but worth gating by env in production deploy.",
+    "server.py uploads endpoint lacks size-before-read check (reads whole file then checks 8MB) — minor; acceptable for images <8MB."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration3.py (new, 23 tests: admin auth, admin resolve, dispute evidence incl uploads, cargo tracking state machine, NPWP checkout+order PUT+profile prefill)",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "success_rate": {"backend": "100% (56/57 passed, 1 skipped by design)", "frontend": "92% — all four features' UI validated; one blocking routing bug on demo-login-admin"},
+  "test_credentials": "POST /api/auth/demo with role contractor_buyer | supplier_vendor | designer_creator | admin (admin → user_demo_admin, is_admin=true)",
+  "seed_data_creation": "Tests create TEST_* listings via supplier and clean up. Admin resolve test flipped a few seed/demo orders to refunded/released — safe (orders remain in DB with resolution metadata).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run `REACT_APP_BACKEND_URL=https://matshop-3.preview.emergentagent.com python -m pytest /app/backend/tests/ -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml` for the full regression (serial). test_iteration3.py covers all four new features. For UI, the admin page is accessed either via /admin direct URL (after cookie set from /api/auth/demo) or via the menu-admin dropdown. The known demo-login-admin → /dashboard bug is in Login.jsx; after main agent fixes it, retest by clicking data-testid=demo-login-admin from a fresh session and asserting URL contains /admin and admin-page selector is visible.",
+  "rca of the issue": "Login.jsx demo() method: `setUser(data.user); navigate(role === 'admin' ? '/admin' : '/dashboard')`. React batches setUser, then re-renders Login. Login's early return `if (user) return <Navigate to='/dashboard' replace />` executes before Admin page mounts, overriding the imperative navigate('/admin'). Confirmed via browser: URL becomes /dashboard and page shows contractor Dashboard despite whoami returning is_admin=true. Fix options: (A) make guard role-aware: `<Navigate to={user.is_admin ? '/admin' : '/dashboard'} replace />`; (B) call navigate before setUser; (C) use useEffect to redirect based on user after login instead of a top-level Navigate component."
+}

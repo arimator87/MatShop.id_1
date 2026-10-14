@@ -14,7 +14,7 @@ const IMG = "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?crop=e
 export default function Login() {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={user.is_admin ? "/admin" : "/dashboard"} replace />;
 
   const google = () => {
     // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
