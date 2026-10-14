@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, errMsg } from "@/lib/api";
 import { rupiah } from "@/lib/format";
-import { WORK_TYPES } from "@/lib/custom";
 
 const Row = ({ p, vendorId, onInvited }) => {
   const [busy, setBusy] = useState(false);
@@ -23,7 +22,7 @@ const Row = ({ p, vendorId, onInvited }) => {
     <div className="flex items-center justify-between gap-3 border border-slate-200 rounded-lg p-3" data-testid={`invite-row-${p.project_id}`}>
       <div className="min-w-0">
         <div className="font-medium line-clamp-1">{p.title}</div>
-        <div className="text-xs text-slate-500 font-mono">{p.project_id} · {WORK_TYPES[p.work_type].label} · {p.city} · {rupiah(p.budget ?? p.estimate_max)}</div>
+        <div className="text-xs text-slate-500 font-mono">{p.project_id} · {p.work_type_label} · {p.city} · {rupiah(p.budget ?? p.estimate_max)}</div>
       </div>
       {done ? (
         <span className="text-xs text-green-700 inline-flex items-center gap-1 shrink-0" data-testid={`invite-done-${p.project_id}`}><Check className="w-4 h-4" /> Diundang</span>

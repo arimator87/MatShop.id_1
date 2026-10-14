@@ -19,6 +19,7 @@ import custom_projects
 import reviews
 import promos
 import catalog
+import custom_config
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -944,6 +945,8 @@ reviews.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify)
 app.include_router(reviews.router)
 catalog.ctx.update(db=db, get_user=get_user)
 app.include_router(catalog.router)
+custom_config.ctx.update(db=db, get_user=get_user)
+app.include_router(custom_config.router)
 promos.ctx.update(db=db, get_user=get_user, notify=custom_projects.notify)
 app.include_router(promos.router)
 app.add_middleware(CORSMiddleware, allow_credentials=True,
@@ -955,6 +958,7 @@ async def startup():
     await seed(db)
     await promos.seed_promos(db)
     await catalog.seed_catalog(db, CATEGORIES)
+    await custom_config.seed_custom_config(db)
     await db.listings.create_index("listing_id", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.orders.create_index("order_id", unique=True)

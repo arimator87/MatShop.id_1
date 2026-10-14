@@ -4,22 +4,12 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 import reviews
+import custom_config
+from custom_config import Dims
 
 router = APIRouter(prefix="/api/custom")
 ctx = {}
 
-WORK_TYPES = {
-    "kitchen_set": {"label": "Kitchen Set", "unit": "m_lari"},
-    "wardrobe": {"label": "Wardrobe / Lemari Tanam", "unit": "m_lari"},
-    "full_interior": {"label": "Fit-Out Apartemen/Rumah", "unit": "m2"},
-}
-UNIT_LABEL = {"m_lari": "meter lari", "m2": "m²"}
-FINISHING = {"hpl": "HPL", "duco": "Duco"}
-RATES = {
-    ("kitchen_set", "hpl"): (2_500_000, 3_500_000), ("kitchen_set", "duco"): (4_000_000, 5_500_000),
-    ("wardrobe", "hpl"): (2_800_000, 3_800_000), ("wardrobe", "duco"): (4_500_000, 6_000_000),
-    ("full_interior", "hpl"): (2_500_000, 4_000_000), ("full_interior", "duco"): (3_500_000, 5_500_000),
-}
 MILESTONES = [
     {"key": "m1", "label": "DP & Survey Lokasi", "pct": 30},
     {"key": "m2", "label": "Fabrikasi Workshop", "pct": 40},
@@ -39,24 +29,10 @@ async def user_of(request: Request):
     return await ctx["get_user"](request)
 
 
-def estimate(work_type: str, size: float, finishing: str):
-    if work_type not in WORK_TYPES or finishing not in FINISHING:
-        raise HTTPException(400, "Jenis pekerjaan / finishing tidak valid")
-    lo, hi = RATES[(work_type, finishing)]
-    unit = WORK_TYPES[work_type]["unit"]
-    return {"min": lo * size, "max": hi * size, "rate_min": lo, "rate_max": hi, "unit": unit, "unit_label": UNIT_LABEL[unit]}
-
-
-class EstimateIn(BaseModel):
-    work_type: str
-    size: float = Field(gt=0, le=1000)
-    finishing: str
-
-
 class ProjectIn(BaseModel):
     work_type: str
     budget: float = Field(gt=0)
-    size: Optional[float] = Field(default=None, gt=0, le=1000)
+    dims: Optional[Dims] = None
     finishing: Optional[str] = None
     title: str = ""
     description: str = Field(min_length=10)
@@ -124,25 +100,26 @@ def event(note):
 
 @router.get("/meta")
 async def meta():
-    return {"work_types": WORK_TYPES, "finishing": FINISHING, "milestones": MILESTONES, "unit_label": UNIT_LABEL}
-
-
-@router.post("/estimate")
-async def post_estimate(body: EstimateIn):
-    return estimate(body.work_type, body.size, body.finishing)
+    return {"milestones": MILESTONES}
 
 
 @router.post("/projects")
 async def create_project(body: ProjectIn, request: Request):
     user = await user_of(request)
-    if body.work_type not in WORK_TYPES:
-        raise HTTPException(400, "Kategori tidak valid")
-    est = estimate(body.work_type, body.size, body.finishing) if body.size and body.finishing else {}
+    wt = await custom_config.get_type(body.work_type)
+    has_dims = body.dims and any(v for v in body.dims.model_dump().values())
+    est = await custom_config.estimate(body.work_type, body.finishing, body.dims) if has_dims else {}
+    if body.finishing and not est:
+        if body.finishing not in wt["finishings"]:
+            raise HTTPException(400, "Finishing tidak tersedia untuk jenis pekerjaan ini")
+    fin_label = (await custom_config.finishing_labels()).get(body.finishing) if body.finishing else None
     data = body.model_dump()
-    data["title"] = body.title.strip() or f"{WORK_TYPES[body.work_type]['label']} · {body.city}"
+    data["title"] = body.title.strip() or f"{wt['label']} · {body.city}"
+    data.update(work_type_label=wt["label"], finishing_label=fin_label, size=est.get("qty"),
+                unit_label=est.get("unit_label", wt["unit_label"]), size_label=est.get("size_label"), size_warning=est.get("warning"))
     doc = {**data, "project_id": f"CP-{uuid.uuid4().hex[:8].upper()}", "client_id": user.user_id,
            "client_name": user.name, "estimate_min": est.get("min"), "estimate_max": est.get("max"),
-           "unit": WORK_TYPES[body.work_type]["unit"], "status": "pending_review", "bid_count": 0, "vendor_id": None,
+           "status": "pending_review", "bid_count": 0, "vendor_id": None,
            "milestones": [], "timeline": [event("Request diajukan. Menunggu review internal MatShop (PENDING_REVIEW_INTERNAL)")],
            "created_at": now_iso()}
     await db().custom_projects.insert_one(doc)

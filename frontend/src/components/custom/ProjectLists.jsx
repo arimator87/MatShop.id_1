@@ -7,7 +7,7 @@ import { ProgressUpdateForm } from "@/components/custom/ProgressUpdateForm";
 import { ArrowUpRight, MapPin, Plus } from "lucide-react";
 import { api, imgSrc } from "@/lib/api";
 import { rupiah } from "@/lib/format";
-import { FINISHING, PROJECT_STATUS, UNIT_LABEL, WORK_TYPES } from "@/lib/custom";
+import { PROJECT_STATUS, sizeText } from "@/lib/custom";
 
 export const ProjectCard = ({ p, badge }) => {
   const st = PROJECT_STATUS[p.status];
@@ -20,12 +20,12 @@ export const ProjectCard = ({ p, badge }) => {
       </div>
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">{p.project_id} · {WORK_TYPES[p.work_type].label}</span>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">{p.project_id} · {p.work_type_label}</span>
           <span className={`text-[11px] px-2 py-0.5 rounded-full ${st.cls}`} data-testid={`project-card-status-${p.project_id}`}><span className="font-mono">{st.code}</span> · {st.label}</span>
           {badge}
         </div>
         <div className="font-heading font-semibold line-clamp-1 group-hover:text-amber-700">{p.title}</div>
-        <div className="text-xs text-slate-600 flex items-center gap-1"><MapPin className="w-3 h-3" />{p.city}{p.size ? ` · ${p.size} ${UNIT_LABEL[p.unit]}` : ""}{p.finishing ? ` · ${FINISHING[p.finishing].label}` : ""}</div>
+        <div className="text-xs text-slate-600 flex items-center gap-1"><MapPin className="w-3 h-3" />{p.city}{p.size_label ? ` · ${sizeText(p)}` : ""}{p.finishing_label ? ` · ${p.finishing_label}` : ""}</div>
         <div className="text-sm font-mono">{p.contract_amount ? `Kontrak ${rupiah(p.contract_amount)} · Milestone ${done}/3` : `Budget ${rupiah(p.budget ?? p.estimate_max)} · ${p.bid_count} penawaran`}</div>
         {p.contract_amount && <div className="pt-2 max-w-md"><ProgressBars p={p} compact /></div>}
       </div>

@@ -4,7 +4,7 @@ import { CheckCircle2, MapPin, Wallet, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api, errMsg, imgSrc } from "@/lib/api";
 import { rupiah } from "@/lib/format";
-import { PROJECT_STATUS, WORK_TYPES } from "@/lib/custom";
+import { PROJECT_STATUS } from "@/lib/custom";
 
 const ReviewCard = ({ p, onDone }) => {
   const [note, setNote] = useState("");
@@ -20,7 +20,7 @@ const ReviewCard = ({ p, onDone }) => {
     <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4" data-testid={`review-card-${p.project_id}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500">{p.project_id} · {WORK_TYPES[p.work_type].label} · {p.client_name}</div>
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500">{p.project_id} · {p.work_type_label} · {p.client_name}</div>
           <Link to={`/custom-project/${p.project_id}`} className="font-heading font-semibold text-lg hover:text-amber-700">{p.title}</Link>
           <div className="text-xs text-slate-600 flex items-center gap-1 mt-1"><MapPin className="w-3 h-3" />{p.address}, {p.city}</div>
         </div>

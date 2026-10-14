@@ -1,15 +1,22 @@
-import { ChefHat, DoorClosed, Sofa } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Armchair, Bath, BedDouble, Brush, ChefHat, DoorClosed, Hammer, Lamp, LayoutGrid, PaintRoller, Ruler, Sofa, Tv, Warehouse } from "lucide-react";
+import { api } from "@/lib/api";
 
-export const WORK_TYPES = {
-  kitchen_set: { label: "Kitchen Set", unit: "m_lari", icon: ChefHat, hint: "Panjang kabinet (meter lari)" },
-  wardrobe: { label: "Wardrobe / Lemari Tanam", unit: "m_lari", icon: DoorClosed, hint: "Lebar lemari (meter lari)" },
-  full_interior: { label: "Fit-Out Apartemen/Rumah", unit: "m2", icon: Sofa, hint: "Luas ruangan (m²)" },
+export const ICONS = { ChefHat, DoorClosed, Sofa, PaintRoller, Hammer, Armchair, Bath, BedDouble, Brush, Lamp, LayoutGrid, Ruler, Tv, Warehouse };
+
+let cache = null;
+export const resetCustomConfig = () => { cache = null; };
+export const useCustomConfig = () => {
+  const [cfg, setCfg] = useState(cache);
+  useEffect(() => {
+    if (!cache) cache = api.get("/custom/config").then(({ data }) => data);
+    cache.then(setCfg);
+  }, []);
+  return cfg;
 };
-export const UNIT_LABEL = { m_lari: "meter lari", m2: "m²" };
-export const FINISHING = {
-  hpl: { label: "HPL", desc: "High Pressure Laminate · tahan gores, motif kayu/solid, lebih ekonomis" },
-  duco: { label: "Duco", desc: "Cat duco premium · permukaan mulus glossy/doff, warna custom" },
-};
+
+export const sizeText = (p) => (p.size_label ? `${p.size_label}${p.size ? ` → ${p.size.toLocaleString("id-ID")} ${p.unit_label}` : ""}` : "");
+
 export const MILESTONES = [
   { key: "m1", label: "DP & Survey Lokasi", pct: 30 },
   { key: "m2", label: "Fabrikasi Workshop", pct: 40 },

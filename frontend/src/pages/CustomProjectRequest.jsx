@@ -3,7 +3,7 @@ import { RequestForm } from "@/components/custom/RequestForm";
 
 export default function CustomProjectRequest() {
   const [sp] = useSearchParams();
-  const initial = { type: sp.get("type"), size: sp.get("size"), finishing: sp.get("finishing"), budget: sp.get("budget") };
+  const initial = { type: sp.get("type"), finishing: sp.get("finishing"), budget: sp.get("budget"), dims: { p: sp.get("p") || "", l: sp.get("l") || "", t: sp.get("t") || "", area: sp.get("area") || "" } };
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8" data-testid="custom-request-page">
       <div>

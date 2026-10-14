@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Loader2, MapPin, Phone, Ruler } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarDays, Loader2, MapPin, Phone, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { api, errMsg, imgSrc } from "@/lib/api";
 import { rupiah } from "@/lib/format";
-import { FINISHING, PROJECT_STATUS, UNIT_LABEL, WORK_TYPES } from "@/lib/custom";
+import { PROJECT_STATUS, sizeText } from "@/lib/custom";
 import { MilestoneTracker } from "@/components/custom/MilestoneTracker";
 import { MilestoneAction } from "@/components/custom/MilestoneAction";
 import { BidForm } from "@/components/custom/BidForm";
@@ -50,7 +50,7 @@ export default function CustomProjectDetail() {
       <Link to="/dashboard" className="text-sm text-slate-600 inline-flex items-center gap-1 hover:text-slate-900"><ArrowLeft className="w-4 h-4" /> Dashboard</Link>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="text-xs font-mono uppercase tracking-widest text-amber-600 mb-2">{p.project_id} · {WORK_TYPES[p.work_type].label}</div>
+          <div className="text-xs font-mono uppercase tracking-widest text-amber-600 mb-2">{p.project_id} · {p.work_type_label}</div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{p.title}</h1>
           <span className={`inline-block mt-3 text-xs font-medium px-2.5 py-1 rounded-full ${st.cls}`} data-testid="project-status"><span className="font-mono">{st.code}</span> · {st.label}</span>
         </div>
@@ -71,7 +71,8 @@ export default function CustomProjectDetail() {
           )}
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
-          {p.size && <Info icon={Ruler}>{p.size} {UNIT_LABEL[p.unit]}{p.finishing ? ` · Finishing ${FINISHING[p.finishing].label}` : ""}</Info>}
+          {(p.size_label || p.finishing_label) && <Info icon={Ruler}>{sizeText(p)}{p.finishing_label ? `${p.size_label ? " · " : ""}Finishing ${p.finishing_label}` : ""}</Info>}
+          {p.size_warning && <Info icon={AlertTriangle}><span className="text-red-600" data-testid="project-size-warning">{p.size_warning}</span></Info>}
           <Info icon={MapPin}>{p.address}, {p.city}</Info>
           {p.phone && <Info icon={Phone}>{p.phone}</Info>}
           {p.survey_date && <Info icon={CalendarDays}>Survey diinginkan: {p.survey_date}</Info>}
