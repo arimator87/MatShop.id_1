@@ -54,7 +54,7 @@ export const AdminReviewBoard = () => {
         </div>
         <select value={f.vendor_id} onChange={set("vendor_id")} className={inputCls} data-testid="admin-review-vendor-select">
           <option value="">Pilih vendor terverifikasi</option>
-          {vendors.map((v) => <option key={v.user_id} value={v.user_id}>{v.business_name} · {v.city}</option>)}
+          {vendors.map((v) => <option key={v.user_id} value={v.user_id}>{`${v.business_name} · ${v.city}`}</option>)}
         </select>
         <input value={f.reviewer_name} onChange={set("reviewer_name")} placeholder="Nama klien" className={inputCls} data-testid="admin-review-reviewer-input" />
         <input value={f.subject} onChange={set("subject")} placeholder="Nama/jenis proyek, mis. Kitchen Set 3 m" className={inputCls} data-testid="admin-review-subject-input" />
