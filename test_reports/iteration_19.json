@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 19 — Vendor/Partner Activation (buyer default, instant supplier, designer form with private KTP/selfie, contractor form with workshop + survey schedule flow). Backend: 27/28 pytest passed, 1 skipped (bidding gate requires open projects for demo). Covered: demo login mapping (buyer/supplier_vendor/designer_creator/contractor/admin + legacy contractor_buyer alias), roles/switch 403 for gated roles / 200 for supplier_vendor, private upload RBAC (anon 401 / other 403 / owner & admin 200 / public anon 200), admin partner-verifications list+counts+non-admin 403+invalid role 400, designer activation requires private uploads (400 on public) + PENDING_DESIGNER_VERIFICATION on submit + admin approve, contractor activation validations (bad video ftp -> 400, missing lat/lng + no maps_url -> 400, address <10 -> 422), full contractor flow: submit -> PENDING_SURVEY_VERIFICATION, admin approve before schedule -> 400, reschedule before schedule -> 400, admin schedule -> SURVEY_SCHEDULED, contractor reschedule -> ok, admin re-schedule keeps survey_history & clears reschedule_request, admin approve after SURVEY_SCHEDULED -> VERIFIED, reject note <5 -> 422. Frontend: login page all 5 demo testids OK; /dashboard buyer tabs material/aset/escrow/custom/favorit present and no peluang tab; user menu role-switch-designer_creator / role-switch-contractor navigate to /aktivasi/{desainer|kontraktor}; activation page has activation-ktp-input, -selfie-input, -workshop-input, -video-input, -address-input, location-maps-input, location-gps-button, activation-submit; pasting '-6.6106, 110.6776' into maps field renders location-coords + map-preview iframe; full contractor submit uploads 3 PNGs + fills form -> navigates to /dashboard with partner-verify-notice + dashboard-partner-status + dashboard-partner-status-message containing the exact Indonesian message 'Profil Anda sedang ditinjau. Tim MatShop.id akan melakukan verifikasi dokumen dan menjadwalkan kunjungan/survei ke lokasi Workshop Anda.' Contractor dashboard tabs peluang/profil present. Admin UI: admin-tab-partners -> partner-verification-board, pv-role-designer_creator shows 'Desainer Pending (1)', pv-role-contractor shows 'Kontraktor Pending (2)' with counts; pv-filter-pending/-verified/-rejected/-all for designer, +pv-filter-scheduled for contractor (correct conditional per spec); pv-card-{uid} shows pv-ktp-, pv-selfie-, pv-video-, pv-maps- for contractor; pv-schedule-{id} opens form with pv-date-/pv-time-/pv-note-/pv-schedule-save-, after save card moves to scheduled filter and pv-approve-{id} becomes available. Seed restored to pristine state post-run.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_partners_iter19.py",
+    "/app/test_reports/pytest/iter19.xml"
+  ],
+  "action_items": [
+    "Documentation only: /app/memory/test_credentials.md still describes legacy roles (contractor_buyer) prominently. The 'Roles update (2026-06)' section is already added at the bottom but main table at top is now outdated — consider cleaning for new agents."
+  ],
+  "critical_code_review_comments": [
+    "partners.py:142 target() returns 404 when role_verifications[role] is absent — correct. schedule/reject/approve consistently use PENDING map plus allowed-transition checks (contractor approve requires SURVEY_SCHEDULED). Good.",
+    "partners.py:74 activate() preserves prev.survey and prev.survey_history when a user resubmits after rejection — correct for the 'Perbaiki & Kirim Ulang' flow.",
+    "server.py:447 /api/uploads uses `private: bool = False` query flag; path format `/{app}/private/{user_id}/{uuid}.ext` is checked by `/private/{user_id}/` substring in partners.check_private — robust.",
+    "server.py:470 serve_file for private checks viewer.user_id == owner_id OR is_admin — correct. get_user raises 401 when no token, so anon gets 401 (not 403) — matches spec.",
+    "custom_projects.py:259 submit_bid only checks `'contractor' in user.enabled_roles` and NOT verification_status — spec compliant (bidding allowed while PENDING, badge differs). vendor_verified is computed from role_verifications.contractor.status == 'VERIFIED' — correct per spec.",
+    "ActivationForm.jsx:24 valid flag requires maps_url.trim() OR lat != null; backend also enforces -> consistent.",
+    "PartnerVerificationBoard.jsx:112 pv-filter-scheduled only rendered when role='contractor' — correct, designer has no survey.",
+    "seed.py DEMO_USERS: user_demo_buyer has enabled_roles ['buyer'] only (upserts preserve admin edits — $setOnInsert vs $set on enabled_roles). Partners.seed_partners migrates legacy 'contractor_buyer' primary_role -> 'buyer' and adds 'buyer' to enabled_roles — correct backward compat.",
+    "Minor: partners.py:139 counts endpoint iterates with nested dict comprehension doing a DB query per (role,status) = 8 queries; fine at this scale but could be aggregated.",
+    "Minor: PartnerStatus RescheduleForm has no success/error toast after submit; relies on reschedule_request appearing. OK but UX could add toast."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_partners_iter19.py"
+  ],
+  "success_rate": {"backend": "100% (27/27 pass, 1 skipped due to no open custom project for designer login)", "frontend": "100% on tested flows"},
+  "test_credentials": "/api/auth/demo roles: buyer, supplier_vendor, designer_creator, contractor, admin (legacy 'contractor_buyer' aliased to buyer). Seeded pending (no demo login): user_pending_designer, user_pending_contractor.",
+  "seed_data_creation": "Backend tests mutate user_demo_buyer (adds role_verifications designer+contractor, approves). Post-run cleanup via /tmp/restore.py restored user_demo_buyer -> enabled_roles ['buyer'], no role_verifications; user_pending_designer and user_pending_contractor restored to PENDING_* status. Confirmed counts: designer_creator pending=1, contractor pending=1, verified matches seed (designer=2, contractor=3).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Promo popup shows on first visit per session — close via [data-testid=promo-popup-close]. For file inputs on /aktivasi/kontraktor use set_input_files on activation-ktp-input, -selfie-input, -workshop-input (file inputs are hidden; set_input_files works without .click). Use paste-coords path '-6.6106, 110.6776' for location — geolocation is unavailable headless. Backend session: POST /api/auth/demo returns cookie session_token; use withCredentials/include. Admin UI pv-filter-scheduled only exists under role=contractor. Reschedule UI: dashboard-partner-status-survey shows survey datetime, reschedule-open button -> reschedule-form -> reschedule-pending after submit. Legacy backend/tests/*.py files still use demo role 'contractor_buyer' and continue to work via alias (buyer -> user_demo_buyer). The 'Roles update (2026-06)' section at bottom of /app/memory/test_credentials.md is authoritative; old table above it is retained for reference."
+}

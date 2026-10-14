@@ -10,7 +10,7 @@ export const IMAGE_SLOTS = {
 };
 
 export const HERO_DEFAULT = {
-  eyebrow: "Marketplace B2B · B2C · Kreator",
+  eyebrow: "Marketplace B2B · B2C · Designer",
   title: "Material, desain, dan aset 3D",
   highlight: "dalam satu meja gambar.",
   subtitle: "MatShop.id mempertemukan Supplier Material, Kontraktor, dan Desainer Interior/Arsitek — dengan harga grosir bertingkat dan pembayaran escrow yang aman.",
