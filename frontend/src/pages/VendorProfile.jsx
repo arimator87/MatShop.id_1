@@ -7,6 +7,8 @@ import { useListings } from "@/lib/useListings";
 import { ListingGrid } from "@/components/ListingGrid";
 import { RatingBadge, Stars, TopRatedBadge } from "@/components/Stars";
 import { InviteDialog } from "@/components/custom/InviteDialog";
+import { FavoriteButton } from "@/components/FavoriteButton";
+import { ReviewReport } from "@/components/ReviewReport";
 import { ReviewPhotos } from "@/components/ReviewPhotos";
 import { ReviewReply } from "@/components/ReviewReply";
 import { useAuth } from "@/context/AuthContext";
@@ -48,7 +50,7 @@ const Reviews = ({ v, isOwner, onReply }) => (
       {v.reviews.length === 0 && <div className="py-10 text-center border border-dashed rounded-xl text-slate-500" data-testid="vendor-no-reviews">Belum ada ulasan.</div>}
       {v.reviews.map((r) => (
         <article key={r.review_id} className="bg-white rounded-xl border border-slate-200 p-5 space-y-2" data-testid={`vendor-review-${r.review_id}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2"><Stars value={r.rating} /><span className="text-xs text-slate-400 font-mono">{new Date(r.created_at).toLocaleDateString("id-ID", { dateStyle: "medium" })}</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex items-center gap-3"><Stars value={r.rating} />{isOwner && <ReviewReport r={r} onSaved={onReply} />}</span><span className="text-xs text-slate-400 font-mono">{new Date(r.created_at).toLocaleDateString("id-ID", { dateStyle: "medium" })}</span></div>
           <p className="text-slate-700 leading-relaxed">"{r.comment}"</p>
           <ReviewPhotos photos={r.photos} testid={`vendor-review-photos-${r.review_id}`} />
           <div className="text-xs text-slate-500"><b className="text-slate-700">{r.reviewer_name}</b> · {r.subject}</div>
@@ -77,6 +79,7 @@ const Header = ({ v }) => {
         {user && user.user_id !== v.user_id && (
           <button onClick={() => setInviting(true)} data-testid="vendor-cta-invite" className="h-12 px-6 rounded-full border-2 border-amber-600 text-amber-700 font-semibold inline-flex items-center gap-2 hover:bg-amber-50"><Send className="w-4 h-4" /> Undang ke Proyek</button>
         )}
+        <FavoriteButton vendorId={v.user_id} testid="vendor-fav-button" />
         {inviting && <InviteDialog v={v} onClose={() => setInviting(false)} />}
         <a href="#vendor-listings" data-testid="vendor-cta-order" className="h-12 px-6 rounded-full bg-[#1E242B] text-white font-semibold inline-flex items-center gap-2 hover:bg-slate-800"><ShoppingBag className="w-4 h-4" /> Order Produk / Jasa</a>
         <a href={v.portfolio_url} target="_blank" rel="noreferrer" data-testid="vendor-cta-external" className="h-12 px-6 rounded-full border border-slate-300 font-semibold inline-flex items-center gap-2 hover:border-slate-900"><ExternalLink className="w-4 h-4" /> Portofolio Eksternal</a>

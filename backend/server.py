@@ -104,6 +104,7 @@ class User(BaseModel):
     suspended: bool = False
     suspended_reason: Optional[str] = None
     verification_note: Optional[str] = None
+    favorite_vendor_ids: List[str] = []
     business_profile: Optional[dict] = None
     tax_profile: Optional[Dict[str, str]] = None
 

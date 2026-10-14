@@ -5,6 +5,7 @@ import { api, imgSrc } from "@/lib/api";
 import { roleOf, WORK_TYPES } from "@/lib/vendor";
 import { SectionHeader } from "@/components/SectionHeader";
 import { RatingBadge, TopRatedBadge } from "@/components/Stars";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 const selCls = "h-10 px-3 rounded-full border border-slate-300 bg-white text-sm outline-none focus:border-amber-600";
 
@@ -12,7 +13,8 @@ const PortfolioCard = ({ v, i }) => {
   const r = roleOf(v.primary_role);
   return (
     <Link to={`/vendor/${v.user_id}`} data-testid={`portfolio-card-${v.user_id}`} style={{ animationDelay: `${i * 60}ms` }}
-      className="fade-up group text-left bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-slate-400 hover:-translate-y-1 transition-[transform,border-color] duration-300">
+      className="fade-up group relative text-left bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-slate-400 hover:-translate-y-1 transition-[transform,border-color] duration-300">
+      <div className="absolute top-3 right-3 z-10"><FavoriteButton vendorId={v.user_id} compact testid={`portfolio-fav-${v.user_id}`} /></div>
       <div className="grid grid-cols-3 grid-rows-2 gap-1 h-56">
         {[0, 1, 2].map((k) => (
           <div key={k} className={`overflow-hidden bg-[#F1EFE9] ${k === 0 ? "col-span-2 row-span-2" : ""}`}>

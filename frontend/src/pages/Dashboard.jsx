@@ -13,6 +13,7 @@ import { BuyerOrders } from "@/components/BuyerOrders";
 import { PurchasedAssets } from "@/components/PurchasedAssets";
 import { EscrowSummary } from "@/components/EscrowSummary";
 import { MyCustomProjects, ProjectOpportunities } from "@/components/custom/ProjectLists";
+import { FavoriteVendors } from "@/components/FavoriteVendors";
 
 const MATERIAL = ["material"];
 const ASSET = ["asset"];
@@ -39,6 +40,7 @@ const TAB_CONFIG = {
     { key: "aset", label: "Aset Digital Terbeli", el: <PurchasedAssets /> },
     { key: "escrow", label: "Status Escrow Payment", el: <div className="space-y-6"><EscrowSummary /><BuyerOrders /></div> },
     { key: "custom", label: "Proyek Custom Saya", el: <MyCustomProjects /> },
+    { key: "favorit", label: "Vendor Favorit", el: <FavoriteVendors /> },
     { key: "peluang", label: "Project Board", el: <ProjectOpportunities /> },
     PROFILE_TAB,
   ],

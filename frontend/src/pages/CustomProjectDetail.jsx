@@ -12,6 +12,7 @@ import { BidCard } from "@/components/custom/BidCard";
 import { ProjectProgress } from "@/components/custom/ProjectProgress";
 import { ProgressUpdateForm } from "@/components/custom/ProgressUpdateForm";
 import { ReviewForm } from "@/components/ReviewForm";
+import { ClientInvitations, VendorInvitation } from "@/components/custom/Invitations";
 
 const Info = ({ icon: Icon, children }) => <div className="flex items-center gap-2 text-sm text-slate-700"><Icon className="w-4 h-4 text-slate-400" />{children}</div>;
 
@@ -100,7 +101,9 @@ export default function CustomProjectDetail() {
 
       {p.viewer === "client" && p.status === "completed" && <ReviewForm source="project" refId={p.project_id} />}
 
-      {p.viewer === "bidder" && p.status === "open" && <BidForm project={p} existing={p.bids[0]} onDone={load} />}
+      {p.viewer === "client" && p.invitations?.length > 0 && <ClientInvitations items={p.invitations} />}
+      {p.viewer === "bidder" && p.status === "open" && p.invitations?.[0] && <VendorInvitation p={p} inv={p.invitations[0]} onChange={load} />}
+      {p.viewer === "bidder" && p.status === "open" && p.invitations?.[0]?.status !== "declined" && <BidForm project={p} existing={p.bids[0]} onDone={load} />}
 
       {p.bids?.length > 0 && (
         <section className="space-y-4" data-testid="project-bids">

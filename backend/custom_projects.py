@@ -162,13 +162,50 @@ async def opportunities(request: Request):
     docs = await db().custom_projects.find({"status": "open", "client_id": {"$ne": user.user_id}},
                                            {"_id": 0, "phone": 0}).sort("created_at", -1).to_list(200)
     mine = {b["project_id"] for b in await db().project_bids.find({"vendor_id": user.user_id}, {"_id": 0, "project_id": 1}).to_list(1000)}
-    out = [{**d, "has_my_bid": d["project_id"] in mine, "invited": user.user_id in d.get("invited_vendor_ids", [])} for d in docs]
+    out = []
+    for d in docs:
+        my_inv = next((i for i in invitations(d) if i["vendor_id"] == user.user_id), None)
+        d.pop("invitations", None)
+        out.append({**d, "has_my_bid": d["project_id"] in mine, "invited": bool(my_inv),
+                    "invitation_status": my_inv and my_inv["status"]})
     out.sort(key=lambda d: not d["invited"])
     return out
 
 
 class InviteIn(BaseModel):
     vendor_id: str
+
+
+class InviteRespondIn(BaseModel):
+    accept: bool
+    reason: str = Field(default="", max_length=500)
+
+
+def invitations(p):
+    inv = p.get("invitations") or {}
+    return [inv.get(v) or {"vendor_id": v, "vendor_name": "", "status": "pending", "reason": "", "at": None} for v in p.get("invited_vendor_ids", [])]
+
+
+@router.post("/projects/{project_id}/invitation/respond")
+async def respond_invitation(project_id: str, body: InviteRespondIn, request: Request):
+    user = await user_of(request)
+    p = await load(project_id)
+    mine = next((i for i in invitations(p) if i["vendor_id"] == user.user_id), None)
+    if not mine:
+        raise HTTPException(404, "Undangan tidak ditemukan")
+    if mine["status"] != "pending":
+        raise HTTPException(400, "Undangan sudah direspon")
+    if p["status"] != "open":
+        raise HTTPException(400, "Proyek tidak lagi menerima penawaran")
+    status = "accepted" if body.accept else "declined"
+    inv = {**mine, "vendor_name": mine["vendor_name"] or user.name, "status": status, "reason": body.reason.strip(), "responded_at": now_iso()}
+    label = "menerima" if body.accept else "menolak"
+    await db().custom_projects.update_one({"project_id": project_id}, {"$set": {f"invitations.{user.user_id}": inv},
+                                                                       "$push": {"timeline": event(f"{user.name} {label} undangan menawar")}})
+    await notify(p["client_id"], f"Undangan {'diterima' if body.accept else 'ditolak'}",
+                 f"{user.name} {label} undangan untuk {p['title']}" + (f". Alasan: {body.reason}" if body.reason and not body.accept else ""),
+                 f"/custom-project/{project_id}")
+    return inv
 
 
 @router.post("/projects/{project_id}/invite")
@@ -186,7 +223,9 @@ async def invite_vendor(project_id: str, body: InviteIn, request: Request):
         raise HTTPException(404, "Vendor terverifikasi tidak ditemukan")
     if body.vendor_id in p.get("invited_vendor_ids", []):
         raise HTTPException(400, "Vendor sudah diundang ke proyek ini")
+    inv = {"vendor_id": body.vendor_id, "vendor_name": v["name"], "status": "pending", "reason": "", "at": now_iso()}
     await db().custom_projects.update_one({"project_id": project_id}, {"$addToSet": {"invited_vendor_ids": body.vendor_id},
+                                                                       "$set": {f"invitations.{body.vendor_id}": inv},
                                                                        "$push": {"timeline": event(f"Klien mengundang {v['name']} untuk menawar")}})
     await notify(body.vendor_id, "Undangan menawar proyek", f"{user.name} mengundang Anda menawar: {p['title']}", f"/custom-project/{project_id}")
     return {"ok": True, "invited_vendor_ids": [*p.get("invited_vendor_ids", []), body.vendor_id]}
@@ -222,6 +261,10 @@ async def get_project(project_id: str, request: Request):
     for b in bids:
         m = meta[b["vendor_id"]]
         b["vendor_rating"], b["vendor_review_count"], b["vendor_top_rated"] = m["rating"], m["review_count"], m["top_rated"]
+    inv = invitations(p)
+    if not (is_client or user.is_admin):
+        inv = [i for i in inv if i["vendor_id"] == user.user_id]
+    p["invitations"] = inv
     viewer = "client" if is_client else "vendor" if is_vendor else "admin" if user.is_admin else "bidder"
     return {**p, "bids": bids, "viewer": viewer}
 

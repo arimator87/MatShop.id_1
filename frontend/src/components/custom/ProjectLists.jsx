@@ -70,7 +70,7 @@ export const ProjectOpportunities = () => {
         <h3 className="font-heading text-lg font-semibold">Request Terbuka dari Klien</h3>
         <List items={open} testid="opportunities-list" empty="Belum ada request proyek terbuka."
           badge={(p) => <>
-            {p.invited && <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#1E242B] text-amber-400 font-semibold" data-testid={`invited-badge-${p.project_id}`}>Diundang</span>}
+            {p.invited && <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#1E242B] text-amber-400 font-semibold" data-testid={`invited-badge-${p.project_id}`}>Diundang{p.invitation_status !== "pending" ? ` · ${p.invitation_status === "accepted" ? "Diterima" : "Ditolak"}` : ""}</span>}
             {p.has_my_bid && <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-100 text-green-800">Sudah ditawar</span>}
           </>} />
       </div>

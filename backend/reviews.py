@@ -32,6 +32,19 @@ class AdminReviewIn(BaseModel):
     photos: List[str] = Field(default=[], max_length=4)
 
 
+REPORT_REASONS = {"spam": "Spam", "abusive": "Kata kasar", "not_client": "Bukan klien saya", "false_info": "Info palsu", "other": "Lainnya"}
+
+
+class ReportIn(BaseModel):
+    reason: str
+    note: str = Field(default="", max_length=500)
+
+
+class ResolveReportIn(BaseModel):
+    action: str
+    note: str = Field(default="", max_length=500)
+
+
 class ReplyIn(BaseModel):
     text: str = Field(min_length=3, max_length=1000)
 
@@ -46,7 +59,7 @@ def city_of(bp):
 
 async def rating_stats(vendor_ids):
     rows = await db().reviews.aggregate([
-        {"$match": {"vendor_id": {"$in": vendor_ids}}},
+        {"$match": {"vendor_id": {"$in": vendor_ids}, "hidden": {"$ne": True}}},
         {"$group": {"_id": "$vendor_id", "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}}]).to_list(None)
     return {r["_id"]: (round(r["avg"], 1), r["count"]) for r in rows}
 
@@ -54,7 +67,7 @@ async def rating_stats(vendor_ids):
 async def done_count(uid):
     return (await db().custom_projects.count_documents({"vendor_id": uid, "status": "completed"}),
             await db().orders.count_documents({"seller_id": uid, "status": "released"}),
-            await db().reviews.count_documents({"vendor_id": uid, "source": {"$in": ["admin", "seed"]}}))
+            await db().reviews.count_documents({"vendor_id": uid, "source": {"$in": ["admin", "seed"]}, "hidden": {"$ne": True}}))
 
 
 def is_top(avg, count, done):
@@ -113,7 +126,7 @@ async def vendor_profile(user_id: str):
     if not u:
         raise HTTPException(404, "Profil vendor tidak ditemukan")
     out = await summary(u, await rating_stats([user_id]))
-    reviews = await db().reviews.find({"vendor_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    reviews = await db().reviews.find({"vendor_id": user_id, "hidden": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).to_list(100)
     out["breakdown"] = {s: sum(1 for r in reviews if r["rating"] == s) for s in range(5, 0, -1)}
     out["reviews"] = reviews
     return out
@@ -208,3 +221,67 @@ async def admin_delete_review(review_id: str, request: Request):
     if not res.deleted_count:
         raise HTTPException(404, "Ulasan tidak ditemukan")
     return {"ok": True}
+
+
+@router.post("/reviews/{review_id}/report")
+async def report_review(review_id: str, body: ReportIn, request: Request):
+    user = await ctx["get_user"](request)
+    if body.reason not in REPORT_REASONS:
+        raise HTTPException(400, "Alasan laporan tidak valid")
+    r = await db().reviews.find_one({"review_id": review_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(404, "Ulasan tidak ditemukan")
+    if r["vendor_id"] != user.user_id:
+        raise HTTPException(403, "Hanya vendor terkait yang dapat melaporkan ulasan")
+    if r.get("report"):
+        raise HTTPException(400, "Ulasan ini sudah pernah dilaporkan")
+    report = {"reason": body.reason, "reason_label": REPORT_REASONS[body.reason], "note": body.note.strip(), "status": "pending",
+              "reporter_name": user.name, "at": datetime.now(timezone.utc).isoformat()}
+    await db().reviews.update_one({"review_id": review_id}, {"$set": {"report": report}})
+    return {**r, "report": report}
+
+
+@router.get("/admin/review-reports")
+async def admin_review_reports(request: Request, status: str = "pending"):
+    await require_admin(request)
+    flt = {"report": {"$ne": None}} if status == "all" else {"report.status": status}
+    return await db().reviews.find(flt, {"_id": 0}).sort("report.at", -1).to_list(200)
+
+
+@router.post("/admin/review-reports/{review_id}/resolve")
+async def admin_resolve_report(review_id: str, body: ResolveReportIn, request: Request):
+    admin = await require_admin(request)
+    if body.action not in ("hide", "reject"):
+        raise HTTPException(400, "Aksi tidak valid")
+    r = await db().reviews.find_one({"review_id": review_id, "report.status": "pending"}, {"_id": 0})
+    if not r:
+        raise HTTPException(404, "Laporan menunggu tidak ditemukan")
+    hide = body.action == "hide"
+    sets = {"report.status": "hidden" if hide else "rejected", "report.resolved_by": admin.name, "report.admin_note": body.note.strip(),
+            "report.resolved_at": datetime.now(timezone.utc).isoformat(), "hidden": hide}
+    await db().reviews.update_one({"review_id": review_id}, {"$set": sets})
+    await ctx["notify"](r["vendor_id"], "Laporan ulasan disetujui" if hide else "Laporan ulasan ditolak",
+                        ("Ulasan disembunyikan dari profil Anda." if hide else "Ulasan tetap ditampilkan.") + (f" Catatan: {body.note}" if body.note else ""),
+                        f"/vendor/{r['vendor_id']}")
+    return await db().reviews.find_one({"review_id": review_id}, {"_id": 0})
+
+
+@router.get("/favorites")
+async def list_favorites(request: Request):
+    user = await ctx["get_user"](request)
+    docs = await db().users.find({**VENDOR_FILTER, "user_id": {"$in": user.favorite_vendor_ids}}, {"_id": 0}).to_list(200)
+    stats = await rating_stats([d["user_id"] for d in docs])
+    return [await summary(d, stats) for d in docs]
+
+
+@router.post("/favorites/{vendor_id}")
+async def toggle_favorite(vendor_id: str, request: Request):
+    user = await ctx["get_user"](request)
+    fav = vendor_id in user.favorite_vendor_ids
+    if not fav and not await db().users.find_one({**VENDOR_FILTER, "user_id": vendor_id}):
+        raise HTTPException(404, "Vendor terverifikasi tidak ditemukan")
+    if vendor_id == user.user_id:
+        raise HTTPException(400, "Tidak bisa memfavoritkan diri sendiri")
+    await db().users.update_one({"user_id": user.user_id}, {"$pull" if fav else "$addToSet": {"favorite_vendor_ids": vendor_id}})
+    ids = [i for i in user.favorite_vendor_ids if i != vendor_id] if fav else [*user.favorite_vendor_ids, vendor_id]
+    return {"favorite": not fav, "favorite_vendor_ids": ids}
