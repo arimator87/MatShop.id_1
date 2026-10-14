@@ -18,8 +18,10 @@ Marketplace hibrida B2B/B2C + Jasa/Aset Kreator "MatShop.id" (requested Next.js/
 ## Implemented (2026-06)
 - All above; tested 25/25 backend, frontend e2e passed; fixed checkout deep-link race
 - Dashboard tabs per role: Supplier [Stok Material, Pesanan Masuk]; Desainer [Aset 3D Saya, Layanan Jasa, Penjualan Digital]; Kontraktor [Pesanan Material, Aset Digital Terbeli, Status Escrow Payment]
+- Shipping options per vendor (Ambil Mandiri / Kargo Vendor, estimate = 50k + fee/unit), dispute flow (DISPUTE freezes funds, blocks release & 7-day auto-release, buyer can withdraw), order detail page + Invoice PDF (reportlab), watermark preview for assets/services, original files only after COMPLETED
 
 ## Backlog
+- P0: Admin mediation panel to resolve DISPUTE (refund buyer / release to vendor)
 - P1: Real payment gateway (Midtrans/Xendit/Stripe), dispute flow, auto-release timer
 - P1: Reviews & ratings, seller profile/storefront pages
 - P2: Quote request (RFQ) for B2B bulk, shipping cost calculator, chat buyer-seller

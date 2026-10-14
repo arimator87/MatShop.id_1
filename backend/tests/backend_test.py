@@ -256,7 +256,7 @@ class TestOrderFlow:
         order_ids = chk["orders"]
         assert len(order_ids) >= 1
         # service fee
-        assert chk["service_fee"] == 2500
+        assert chk["service_fee"] == 2500 * len(order_ids)
 
         # payment status
         p = requests.get(f"{API}/payments/{payment_id}", headers=auth(buyer["token"])).json()
@@ -278,12 +278,19 @@ class TestOrderFlow:
 
         if asset_order:
             assert asset_order["status"] == "shipped", f"asset order should auto-ship, got {asset_order['status']}"
-            # download asset
+            # download denied before release (new behaviour)
             aid = next(i["listing_id"] for i in asset_order["items"] if i["type"] == "asset")
+            dr_locked = requests.get(f"{API}/orders/{asset_order['order_id']}/download/{aid}",
+                                     headers=auth(buyer["token"]))
+            assert dr_locked.status_code == 403, "download must be locked until COMPLETED"
+            # release the asset order then download
+            rr = requests.post(f"{API}/orders/{asset_order['order_id']}/release",
+                               headers=auth(buyer["token"]))
+            assert rr.status_code == 200
             dr = requests.get(f"{API}/orders/{asset_order['order_id']}/download/{aid}",
                               headers=auth(buyer["token"]))
             assert dr.status_code == 200
-            assert "file_url" in dr.json()
+            assert "file_url" in dr.json() and dr.json()["file_url"]
 
         if mat_order:
             assert mat_order["status"] == "held"
@@ -298,6 +305,236 @@ class TestOrderFlow:
                                    headers=auth(buyer["token"]))
                 assert rr.status_code == 200
                 assert rr.json()["status"] == "released"
+
+
+# ---------- New feature tests: shipping, dispute, invoice, download gating ----------
+
+def _clear_cart(tok):
+    cart = requests.get(f"{API}/cart", headers=auth(tok)).json()
+    for it in cart["items"]:
+        requests.delete(f"{API}/cart/items/{it['listing']['listing_id']}", headers=auth(tok))
+
+
+def _create_supplier_material(sup_tok, title, qty_tier=51, ship_fee=5000, wh="TEST Gudang Jakarta"):
+    r = requests.post(f"{API}/listings", headers=auth(sup_tok), json={
+        "type": "material", "category": "plywood", "title": title,
+        "description": "test", "price": 100000, "unit": "lembar", "stock": 500,
+        "tiers": [{"min_qty": qty_tier, "price": 90000}],
+        "images": ["https://x/img.jpg"],
+        "shipping_fee_per_unit": ship_fee, "warehouse_location": wh,
+    })
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+class TestShippingMeta:
+    def test_meta_shipping(self):
+        r = requests.get(f"{API}/meta/shipping")
+        assert r.status_code == 200
+        d = r.json()
+        assert d["cargo_base_fee"] == 50000
+        assert d["service_fee"] == 2500
+        assert "pickup" in d["methods"] and "vendor_cargo" in d["methods"]
+
+
+class TestListingShippingFields:
+    def test_supplier_saves_ship_fields(self, supplier):
+        lst = _create_supplier_material(supplier["token"], "TEST_ship_fields")
+        try:
+            got = requests.get(f"{API}/listings/{lst['listing_id']}").json()
+            assert got["shipping_fee_per_unit"] == 5000
+            assert got["warehouse_location"] == "TEST Gudang Jakarta"
+        finally:
+            requests.delete(f"{API}/listings/{lst['listing_id']}", headers=auth(supplier["token"]))
+
+
+class TestCheckoutShipping:
+    def test_pickup_vs_cargo_estimate(self, buyer, supplier):
+        lst = _create_supplier_material(supplier["token"], "TEST_ship_pickup", ship_fee=5000)
+        try:
+            _clear_cart(buyer["token"])
+            requests.post(f"{API}/cart/items", headers=auth(buyer["token"]),
+                          json={"listing_id": lst["listing_id"], "qty": 3})
+            # pickup
+            r = requests.post(f"{API}/checkout", headers=auth(buyer["token"]), json={
+                "recipient": "Test Buyer", "phone": "0812345678", "address": "Jl. Test",
+                "shipping": {"user_demo_supplier": "pickup"},
+            })
+            assert r.status_code == 200
+            oid = r.json()["orders"][0]
+            o = requests.get(f"{API}/orders/{oid}", headers=auth(buyer["token"])).json()
+            assert o["shipping_method"] == "pickup"
+            assert o["shipping_cost"] == 0
+            assert o["warehouse_location"] == "TEST Gudang Jakarta"
+            assert o["service_fee"] == 2500
+            assert o["total"] == o["items_total"]  # ship=0
+            assert r.json()["service_fee"] == 2500 * len(r.json()["orders"])
+
+            # vendor_cargo path
+            _clear_cart(buyer["token"])
+            requests.post(f"{API}/cart/items", headers=auth(buyer["token"]),
+                          json={"listing_id": lst["listing_id"], "qty": 4})
+            r2 = requests.post(f"{API}/checkout", headers=auth(buyer["token"]), json={
+                "recipient": "Test Buyer", "phone": "0812345678", "address": "Jl. Test",
+                "shipping": {"user_demo_supplier": "vendor_cargo"},
+            })
+            assert r2.status_code == 200
+            o2 = requests.get(f"{API}/orders/{r2.json()['orders'][0]}", headers=auth(buyer["token"])).json()
+            assert o2["shipping_method"] == "vendor_cargo"
+            assert o2["shipping_cost"] == 50000 + 5000 * 4
+            assert o2["total"] == o2["items_total"] + o2["shipping_cost"]
+        finally:
+            _clear_cart(buyer["token"])
+            requests.delete(f"{API}/listings/{lst['listing_id']}", headers=auth(supplier["token"]))
+
+    def test_invalid_shipping_method(self, buyer, supplier):
+        lst = _create_supplier_material(supplier["token"], "TEST_bad_method")
+        try:
+            _clear_cart(buyer["token"])
+            requests.post(f"{API}/cart/items", headers=auth(buyer["token"]),
+                          json={"listing_id": lst["listing_id"], "qty": 2})
+            r = requests.post(f"{API}/checkout", headers=auth(buyer["token"]), json={
+                "recipient": "Test Buyer", "phone": "0812345678", "address": "Jl. Test",
+                "shipping": {"user_demo_supplier": "bogus"},
+            })
+            assert r.status_code == 400
+        finally:
+            _clear_cart(buyer["token"])
+            requests.delete(f"{API}/listings/{lst['listing_id']}", headers=auth(supplier["token"]))
+
+
+# Helper to build a paid held order (buyer paid, status held)
+def _held_order(buyer_tok, supplier_tok):
+    lst = _create_supplier_material(supplier_tok, f"TEST_hold_{uuid.uuid4().hex[:4]}")
+    _clear_cart(buyer_tok)
+    requests.post(f"{API}/cart/items", headers=auth(buyer_tok),
+                  json={"listing_id": lst["listing_id"], "qty": 2})
+    chk = requests.post(f"{API}/checkout", headers=auth(buyer_tok), json={
+        "recipient": "Test Buyer", "phone": "0812345678", "address": "Jl. Test",
+        "shipping": {"user_demo_supplier": "pickup"},
+    }).json()
+    requests.post(f"{API}/payments/{chk['payment_id']}/pay", headers=auth(buyer_tok))
+    return lst, chk["orders"][0]
+
+
+import uuid
+
+
+class TestDispute:
+    def test_dispute_blocks_release_and_ship(self, buyer, supplier):
+        lst, oid = _held_order(buyer["token"], supplier["token"])
+        try:
+            # buyer opens dispute on held order
+            r = requests.post(f"{API}/orders/{oid}/dispute", headers=auth(buyer["token"]),
+                              json={"reason": "Barang belum sampai dan vendor tidak respon"})
+            assert r.status_code == 200
+            assert r.json()["status"] == "disputed"
+            assert r.json()["dispute"]["reason"].startswith("Barang")
+
+            # release blocked
+            rr = requests.post(f"{API}/orders/{oid}/release", headers=auth(buyer["token"]))
+            assert rr.status_code == 400
+
+            # seller ship blocked
+            sh = requests.post(f"{API}/orders/{oid}/ship", headers=auth(supplier["token"]),
+                               json={"note": "coba kirim"})
+            assert sh.status_code == 400
+
+            # dispute short reason rejected
+            lst2, oid2 = _held_order(buyer["token"], supplier["token"])
+            try:
+                bad = requests.post(f"{API}/orders/{oid2}/dispute", headers=auth(buyer["token"]),
+                                    json={"reason": "x"})
+                assert bad.status_code == 422
+            finally:
+                requests.delete(f"{API}/listings/{lst2['listing_id']}", headers=auth(supplier["token"]))
+
+            # cancel restores previous (held)
+            c = requests.post(f"{API}/orders/{oid}/dispute/cancel", headers=auth(buyer["token"]))
+            assert c.status_code == 200
+            assert c.json()["status"] == "held"
+            assert c.json()["dispute"]["status"] == "withdrawn"
+
+            # seller stats include disputed count (open another dispute first)
+            requests.post(f"{API}/orders/{oid}/dispute", headers=auth(buyer["token"]),
+                          json={"reason": "Dicoba lagi karena vendor telat"})
+            stats = requests.get(f"{API}/seller/stats", headers=auth(supplier["token"])).json()
+            assert stats.get("disputed", 0) >= 1
+        finally:
+            requests.delete(f"{API}/listings/{lst['listing_id']}", headers=auth(supplier["token"]))
+
+    def test_auto_release_skips_disputed(self, buyer, supplier):
+        # requires direct mongo access or stress; emulate via API-shipped flow:
+        # Make a shipped order, mark auto_release in past, confirm it releases on GET /orders
+        # And a shipped-then-disputed one with same past date, confirm it stays.
+        # We approximate by poking through the orders endpoint only - skip if we can't manipulate.
+        pytest.skip("Requires direct DB access to backdate auto_release_at; covered manually.")
+
+
+class TestInvoicePdf:
+    def test_invoice_awaiting_payment_400(self, buyer, supplier):
+        lst = _create_supplier_material(supplier["token"], "TEST_inv_awaiting")
+        try:
+            _clear_cart(buyer["token"])
+            requests.post(f"{API}/cart/items", headers=auth(buyer["token"]),
+                          json={"listing_id": lst["listing_id"], "qty": 2})
+            chk = requests.post(f"{API}/checkout", headers=auth(buyer["token"]), json={
+                "recipient": "Test Buyer", "phone": "0812345678", "address": "Jl. Test",
+                "shipping": {"user_demo_supplier": "pickup"},
+            }).json()
+            oid = chk["orders"][0]
+            r = requests.get(f"{API}/orders/{oid}/invoice.pdf", headers=auth(buyer["token"]))
+            assert r.status_code == 400
+            # pay then invoice should work
+            requests.post(f"{API}/payments/{chk['payment_id']}/pay", headers=auth(buyer["token"]))
+            r2 = requests.get(f"{API}/orders/{oid}/invoice.pdf", headers=auth(buyer["token"]))
+            assert r2.status_code == 200
+            assert r2.headers.get("content-type", "").startswith("application/pdf")
+            assert r2.content[:4] == b"%PDF"
+        finally:
+            _clear_cart(buyer["token"])
+            requests.delete(f"{API}/listings/{lst['listing_id']}", headers=auth(supplier["token"]))
+
+    def test_invoice_unauthorized_user_404(self, buyer, supplier, designer):
+        lst, oid = _held_order(buyer["token"], supplier["token"])
+        try:
+            # designer is neither buyer nor seller
+            r = requests.get(f"{API}/orders/{oid}/invoice.pdf", headers=auth(designer["token"]))
+            assert r.status_code == 404
+        finally:
+            requests.delete(f"{API}/listings/{lst['listing_id']}", headers=auth(supplier["token"]))
+
+
+class TestServiceDeliverable:
+    def test_deliverable_hidden_until_released(self, buyer, supplier, designer):
+        # buyer orders a service listing
+        services = requests.get(f"{API}/listings", params={"tab": "services"}).json()
+        svc_lst = next((l for l in services if l["owner_id"] == "user_demo_designer"), None)
+        if not svc_lst:
+            pytest.skip("no seed service listing")
+        _clear_cart(buyer["token"])
+        requests.post(f"{API}/cart/items", headers=auth(buyer["token"]),
+                      json={"listing_id": svc_lst["listing_id"], "qty": 1})
+        chk = requests.post(f"{API}/checkout", headers=auth(buyer["token"]), json={
+            "recipient": "Test Buyer", "phone": "0812345678", "address": "Jl. Test",
+        }).json()
+        oid = chk["orders"][0]
+        requests.post(f"{API}/payments/{chk['payment_id']}/pay", headers=auth(buyer["token"]))
+
+        # designer ships with deliverable_url
+        hidden_url = "https://files.matshop.id/demo/deliverable.pdf"
+        sr = requests.post(f"{API}/orders/{oid}/ship", headers=auth(designer["token"]),
+                           json={"note": "Hasil siap", "deliverable_url": hidden_url})
+        assert sr.status_code == 200
+
+        # buyer view: deliverable_url hidden
+        bo = requests.get(f"{API}/orders/{oid}", headers=auth(buyer["token"])).json()
+        assert "deliverable_url" not in bo, "deliverable_url must be hidden until COMPLETED"
+
+        # release then visible
+        requests.post(f"{API}/orders/{oid}/release", headers=auth(buyer["token"]))
+        bo2 = requests.get(f"{API}/orders/{oid}", headers=auth(buyer["token"])).json()
+        assert bo2.get("deliverable_url") == hidden_url
 
     def test_seller_stats(self, supplier):
         r = requests.get(f"{API}/seller/stats", headers=auth(supplier["token"]))

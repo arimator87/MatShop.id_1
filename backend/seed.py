@@ -127,8 +127,8 @@ SEED_LISTINGS = [
 
 async def seed(db):
     for u in DEMO_USERS:
-        await db.users.update_one({"user_id": u["user_id"]}, {"$setOnInsert": {
-            **u, "picture": "", "active_role": u["primary_role"],
+        await db.users.update_one({"user_id": u["user_id"]}, {"$set": {"enabled_roles": u["enabled_roles"]}, "$setOnInsert": {
+            **{k: v for k, v in u.items() if k != "enabled_roles"}, "picture": "", "active_role": u["primary_role"],
             "created_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
     if await db.listings.count_documents({}) == 0:
         await insert_listings(db)

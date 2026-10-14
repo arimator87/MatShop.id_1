@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 2 — tested new SHIPPING / DISPUTE / INVOICE / WATERMARK features end-to-end. Backend regression + new feature tests: 33 passed, 1 skipped (auto-release backdating requires direct DB manipulation and is documented). Added 10 new test cases covering /meta/shipping, shipping_fee_per_unit + warehouse_location persistence, pickup vs vendor_cargo cost math (50000 + fee*qty), service_fee=2500 per vendor, dispute open/release-blocked/ship-blocked/cancel-restore flow, seller stats disputed count, invoice.pdf 400 for awaiting_payment, invoice.pdf 404 for unrelated user, invoice.pdf returns application/pdf starting with %PDF after payment, service deliverable_url hidden from buyer until COMPLETED. Download gating updated: now 403 unless status=released. UI smoke validated: material detail has no watermark + shipping info card; asset & service detail show preview-only-badge + lock notes; checkout shipping section with pickup/vendor_cargo buttons (Rp 0 vs Rp 51.500 for 1 unit HPL = 50000+1500), grand total updates; orders page shows ESCROW_HELD badge, 'Ajukan Komplain' button, 'Detail & Invoice' link; order detail page has print-invoice-button, vendor card, items table, dispute dialog with min-5-char validation; dashboard 'Aset Digital Terbeli' shows locked vs download buttons; supplier ListingForm has listing-shipfee-input + listing-warehouse-input.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "POST /api/orders/{id}/dispute", "issue": "Short reason (<5 chars) returns 422 from Pydantic rather than 400; works but inconsistent with other business errors that use 400"},
+    {"endpoint": "parallel tests", "issue": "pytest-xdist (configured -n 2 --dist loadscope) causes buyer-cart races between classes on different workers; serial (-n 0) passes 33/33. Not a product bug but test-infra note."}
+  ]},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Reset user_demo_buyer.enabled_roles to ['contractor_buyer'] in seed.py startup — role-switch endpoint can leak extra roles into the demo buyer (was polluted to supplier_vendor+designer_creator from previous testing), causing test_buyer_cannot_create_material to intermittently return 200.",
+    "(Optional) /checkout deep-link race condition from iteration 1 is already fixed — CartContext now exposes 'loaded' and Checkout.jsx gates the redirect behind it (checkout-loading testid shows briefly).",
+    "(Optional) Add an auto-release unit/integration test using an injected clock or admin endpoint to backdate auto_release_at — currently skipped."
+  ],
+  "critical_code_review_comments": [
+    "server.py: find_order() calls run_auto_release before fetching; good — ensures stale shipped orders promote to released. Disputed orders explicitly excluded by status filter.",
+    "server.py: for_viewer() hides deliverable_url only for buyer AND when status != released — correct. Seller always sees it. Verified with test.",
+    "server.py: /orders/{id}/release returns 400 when status=disputed (checked before 'not shipped' guard) — correct.",
+    "server.py: checkout computes shipping_cost only for material items in a vendor order; pickup=0, vendor_cargo=50000+Σ(fee_per_unit*qty). total=items_total+shipping_cost (excludes service_fee from order.total — service_fee is tracked separately per order and summed into payment.amount). Frontend reads order.total + service_fee for display total; consistent.",
+    "invoice.py: PDF uses order.shipping (recipient/phone/address) saved on checkout. Status map includes DISPUTE/COMPLETED labels. One minor concern: build_invoice is synchronous reportlab (blocking) wrapped in run_in_threadpool — correct usage.",
+    "OrderActions.jsx dispute button disabled until reason.length>=5 — matches backend min_length=5 validation.",
+    "ListingDetail.jsx watermark preview applied when l.type !== 'material' — correct per spec.",
+    "ShippingPicker.jsx cargo cost calc matches backend shipping_estimate exactly.",
+    "server.py role-switch endpoint uses $addToSet on enabled_roles without any audit — can let any user self-promote to supplier_vendor/designer_creator and then create listings. Likely intentional 'hybrid onboarding' per iteration 1 note, but worth confirming business intent.",
+    "OrderDetail.jsx dispute action uses OrderActions component which already handles held/shipped → good; no duplicate code."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (added TestShippingMeta, TestListingShippingFields, TestCheckoutShipping, TestDispute, TestInvoicePdf, TestServiceDeliverable; updated TestOrderFlow asset-download assertion for new release-gated behaviour and service_fee=per-vendor-sum)",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "success_rate": {"backend": "100% (33/33 serial, 1 skipped by design)", "frontend": "100% (all tested selectors present and functional)"},
+  "test_credentials": "POST /api/auth/demo {role: contractor_buyer|supplier_vendor|designer_creator}; UI data-testid=demo-login-*",
+  "seed_data_creation": "Reset user_demo_buyer.enabled_roles=['contractor_buyer'] once to remove pollution from role-switch tests of prior iterations. Tests create TEST_* listings via supplier and clean up.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite now covers all four new features (SHIPPING pickup/vendor_cargo + 2500 service fee per vendor; DISPUTE open/cancel + release/ship blocks + stats; INVOICE 400/404/PDF; WATERMARK + service deliverable hidden until released; download 403 until released). Run with 'pytest /app/backend/tests/backend_test.py -n 0 --junitxml=...' for deterministic results; parallel -n 2 causes buyer-cart contention across classes. If auto-release behaviour needs verification, add an admin-only test hook to backdate auto_release_at, or switch to serial after writing a short-wait variant.",
+  "rca of the issue": "None blocking. One nit: dispute endpoint returns 422 (Pydantic) rather than 400 for short reason — Pydantic validators fire before route body; if main agent wants consistent 400 responses, wrap min_length check manually inside the handler. Also pytest parallel race on shared demo-buyer cart — not a product bug; pytest.ini loadscope keeps classes on same worker but buyer cart is API-level shared across workers."
+}
