@@ -15,6 +15,7 @@ import re
 
 from seed import seed
 from invoice import build_invoice
+import custom_projects
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -845,6 +846,8 @@ async def root():
 
 
 app.include_router(api)
+custom_projects.ctx.update(db=db, get_user=get_user)
+app.include_router(custom_projects.router)
 app.add_middleware(CORSMiddleware, allow_credentials=True,
                    allow_origin_regex=".*", allow_methods=["*"], allow_headers=["*"])
 

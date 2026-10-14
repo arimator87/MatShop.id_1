@@ -10,6 +10,7 @@ import { SellerOrders } from "@/components/SellerOrders";
 import { BuyerOrders } from "@/components/BuyerOrders";
 import { PurchasedAssets } from "@/components/PurchasedAssets";
 import { EscrowSummary } from "@/components/EscrowSummary";
+import { MyCustomProjects, ProjectOpportunities } from "@/components/custom/ProjectLists";
 
 const MATERIAL = ["material"];
 const ASSET = ["asset"];
@@ -20,6 +21,7 @@ const TAB_CONFIG = {
   supplier_vendor: [
     { key: "stok", label: "Stok Material", el: <MyListings types={MATERIAL} /> },
     { key: "pesanan", label: "Pesanan Masuk", el: <SellerOrders /> },
+    { key: "peluang", label: "Peluang Proyek", el: <ProjectOpportunities /> },
   ],
   designer_creator: [
     { key: "aset", label: "Aset 3D Saya", el: <MyListings types={ASSET} /> },
@@ -30,6 +32,8 @@ const TAB_CONFIG = {
     { key: "material", label: "Pesanan Material", el: <BuyerOrders filter={hasMaterial} /> },
     { key: "aset", label: "Aset Digital Terbeli", el: <PurchasedAssets /> },
     { key: "escrow", label: "Status Escrow Payment", el: <div className="space-y-6"><EscrowSummary /><BuyerOrders /></div> },
+    { key: "custom", label: "Proyek Custom Saya", el: <MyCustomProjects /> },
+    { key: "peluang", label: "Peluang Proyek", el: <ProjectOpportunities /> },
   ],
 };
 

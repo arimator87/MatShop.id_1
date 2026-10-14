@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Truck, PackageCheck, Wallet } from "lucide-react";
 import { Hero } from "@/components/Hero";
+import { CustomBanner } from "@/components/custom/CustomBanner";
 import { CatalogTabs } from "@/components/CatalogTabs";
 import { ListingGrid } from "@/components/ListingGrid";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -76,6 +77,7 @@ export default function Home() {
   return (
     <div data-testid="home-page">
       <Hero />
+      <CustomBanner />
       <CatalogSection />
       <Popular />
       <CreatorPicks />

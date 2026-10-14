@@ -10,6 +10,7 @@ const links = [
   { to: "/katalog?tab=all", label: "Material", id: "nav-materials" },
   { to: "/katalog?tab=services", label: "Jasa Desain", id: "nav-services" },
   { to: "/katalog?tab=assets", label: "Aset 3D", id: "nav-assets" },
+  { to: "/custom-project", label: "Custom Furniture", id: "nav-custom-project" },
 ];
 
 export const Navbar = () => {
