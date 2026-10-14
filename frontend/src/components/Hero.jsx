@@ -11,8 +11,8 @@ const stats = [
 ];
 
 export const Hero = () => (
-  <section className="relative overflow-hidden blueprint-grid border-b border-slate-200">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+  <section className="relative overflow-hidden bg-white border-b border-slate-200">
+    <div className="bg-white max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
       <div className="lg:col-span-6 space-y-7">
         <div className="fade-up inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-slate-600 bg-white border border-slate-200 rounded-full px-3 py-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> Marketplace B2B · B2C · Kreator
