@@ -346,8 +346,11 @@ async def categories():
 
 @api.get("/listings")
 async def list_listings(tab: Optional[str] = None, type: Optional[str] = None, category: Optional[str] = None,
-                        q: Optional[str] = None, sort: str = "popular", limit: int = Query(48, le=100)):
+                        q: Optional[str] = None, sort: str = "popular", limit: int = Query(48, le=100),
+                        owner: Optional[str] = None):
     flt = {"is_active": True}
+    if owner:
+        flt["owner_id"] = owner
     if tab in TABS:
         flt.update(TABS[tab])
     if type:
@@ -857,6 +860,23 @@ async def seller_stats(request: Request):
     return {"held": held, "released": released, "orders": len([o for o in orders if o["status"] != "awaiting_payment"]),
             "pending_action": len([o for o in orders if o["status"] == "held"]),
             "disputed": len([o for o in orders if o["status"] == "disputed"]), "listings": listings}
+
+
+# ---------- Public portfolios ----------
+@api.get("/portfolios")
+async def portfolios(limit: int = Query(12, le=50)):
+    docs = await db.users.find({"verification_status": "VERIFIED", "suspended": {"$ne": True},
+                                "business_profile.photos.0": {"$exists": True}}, {"_id": 0}).to_list(limit)
+    out = []
+    for u in docs:
+        bp = u["business_profile"]
+        done = await db.custom_projects.count_documents({"vendor_id": u["user_id"], "status": "completed"})
+        listings = await db.listings.count_documents({"owner_id": u["user_id"], "is_active": True})
+        out.append({"user_id": u["user_id"], "business_name": bp["business_name"], "address": bp["address"],
+                    "portfolio_url": bp["portfolio_url"], "photos": bp["photos"], "primary_role": u.get("primary_role"),
+                    "completed_projects": done, "listings": listings})
+    out.sort(key=lambda x: (-len(x["photos"]), -x["completed_projects"]))
+    return out
 
 
 # ---------- Vendor verification ----------

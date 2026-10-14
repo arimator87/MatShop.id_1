@@ -37,6 +37,10 @@ DEMO_USERS = [
      "primary_role": "designer_creator", "enabled_roles": ["designer_creator", "contractor_buyer"]},
     {"user_id": "user_master_workshop", "email": "workshop@matshop.id", "name": "Master Workshop MatShop",
      "primary_role": "supplier_vendor", "enabled_roles": ["supplier_vendor"], "verification_status": "VERIFIED"},
+    {"user_id": "user_showcase_workshop", "email": "kayurupa@matshop.id", "name": "Kayu Rupa Workshop",
+     "primary_role": "supplier_vendor", "enabled_roles": ["supplier_vendor", "contractor_buyer"]},
+    {"user_id": "user_showcase_interior", "email": "ruangkita@matshop.id", "name": "Ruang Kita Interior",
+     "primary_role": "designer_creator", "enabled_roles": ["designer_creator", "contractor_buyer"]},
     {"user_id": "user_demo_admin", "email": "admin@matshop.id", "name": "Admin Mediasi MatShop",
      "primary_role": "contractor_buyer", "enabled_roles": ["contractor_buyer"], "is_admin": True},
 ]
@@ -153,6 +157,12 @@ DEMO_PROFILES = {
     "user_demo_designer": {"business_name": "Studio Ruang Arsitek", "address": "Jl. Senopati No. 21, Jakarta Selatan",
                            "portfolio_url": "https://behance.net/studioruang", "photos": [I["living"], I["lounge"]],
                            "pic_name": "Anisa Putri", "pic_phone": "081234500002"},
+    "user_showcase_workshop": {"business_name": "Kayu Rupa Workshop", "address": "Jl. Raya Jepara KM 4, Jepara, Jawa Tengah",
+                               "portfolio_url": "https://instagram.com/kayurupa.workshop", "photos": [I["k2"], I["k1"], I["chair2"], I["wood2"]],
+                               "pic_name": "Slamet Riyadi", "pic_phone": "081234500003"},
+    "user_showcase_interior": {"business_name": "Ruang Kita Interior & Fit-Out", "address": "Jl. Dago No. 88, Bandung",
+                               "portfolio_url": "https://behance.net/ruangkita", "photos": [I["lounge"], I["living"], I["studio"], I["wp2"]],
+                               "pic_name": "Dewi Lestari", "pic_phone": "081234500004"},
 }
 
 SHIP_FEES = {"plywood": 3500, "hpl": 1500, "spc": 2500, "marmer": 15000, "wallpanel": 1500, "lis": 1000, "furniture": 75000}
