@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 8 — tested new Reviews/Portfolios/VendorProfile module end-to-end. Added /app/backend/tests/test_reviews.py (13 tests, all pass). Full regression: 141 passed, 1 pre-existing skip. Backend verified: GET /api/portfolios/filters returns cities [Bandung,Bekasi,Jakarta,Jepara] + 8 work_types; GET /api/portfolios returns city/work_types/rating_avg/review_count; filters ?city=Bandung and ?work_type=kitchen_set correctly scope results; ?sort=rating returns strictly desc avg. GET /api/vendors/user_showcase_workshop returns breakdown + reviews (seeded ratings avg 4.67, 3 reviews); unknown vendor → 404. Review flow: created a fresh buyer order on supplier listing, paid (mock)/shipped/released, POSTed /api/reviews succeeded; rating=6 → 422, comment<10 chars → 422, duplicate → 400, non-released held order → 400, another user's order → 404. Project source: drove a custom project through admin approve → bid → accept → m1-m3 pay/submit/release → completed, then non-client review → 404, client review → 200. GET /api/reviews/ref/{ref_id} returns review or null. PUT /api/users/business-profile accepts and persists city + work_types. Frontend verified (Playwright): home portfolio-section + portfolio-grid shows 4 vendor cards each with rating badge/city/work-type chips; portfolio-filter-city=Bandung narrows to 1 card; portfolio-filter-work-type=kitchen_set narrows correctly; portfolio-sort=rating applies; portfolio-see-all navigates to /portofolio showing portfolio-page; clicking portfolio-card-{id} navigates to /vendor/{id}. Vendor profile page shows vendor-profile-page/vendor-name/vendor-rating-badge/vendor-gallery/vendor-reviews/vendor-rating-avg/vendor-cta-request/vendor-cta-order/vendor-thumb-0..3; supplier page shows vendor-listings; unknown vendor shows vendor-not-found. Order review flow: on /pesanan/{released_order} the review-form rendered with review-star-1..5, review-comment-input, review-submit-button; after submit the review-submitted panel showed, and the review persisted on /vendor/user_demo_supplier (rating-avg updated to 4.9 with the new review-card visible). BusinessProfileForm tab 'Profil Usaha & Portofolio' exposes profile-city-input and profile-work-type-kitchen_set toggle.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_reviews.py",
+    "/app/backend/tests/test_custom_projects.py",
+    "/app/backend/tests/test_takeover_progress.py",
+    "/app/backend/tests/test_vendor_verification.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "reviews.py city_of() fallback uses `bp['address'].split(',')[-1]` when city missing — safe for seeded data; if a vendor submits a profile without city nor a comma in address, city would be the full address. Minor; UI already sends city explicitly.",
+    "reviews.py VENDOR_FILTER requires at least one photo (`business_profile.photos.0` exists) — correctly hides empty profiles from portfolios.",
+    "reviews.resolve_ref: 404 on 'not your order/project' prevents enumeration — good. Status validation returns 400 — correctly separates auth-404 from state-400.",
+    "db.reviews unique index on (source, ref_id) added in server.py startup — enforces 1 review per transaction at DB level as well as app check. Nice defense-in-depth.",
+    "VendorProfile.jsx renders `v.rating_avg.toFixed(1)` directly — if rating_avg becomes a non-number client-side this would throw. Current backend returns 0 fallback so OK.",
+    "Portfolios sort fallback uses photos length + completed_projects; sort=featured not exposed in UI but server-side default — fine.",
+    "/api/reviews POST stores reviewer_name = user.name snapshot — if user renames later it's not updated. Acceptable since review is point-in-time.",
+    "Minor consistency: GET /api/reviews/ref/{ref_id} authenticates but does not filter by current user — i.e. any logged-in user can fetch any review by ref_id. Not sensitive since reviews are public anyway via /vendors/{id}. Could drop auth requirement for consistency with public reads.",
+    "Vendor profile exposes pic_name/pic_phone from business_profile — these ARE PII; VendorProfile.jsx should only render address/photos/business_name. Currently via summary() the API does not return pic_* fields (they stay inside business_profile), so no leak. Confirmed."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_reviews.py (new, 13 tests)"
+  ],
+  "success_rate": {"backend": "100% (141 passed, 1 pre-existing skip across 142 tests)", "frontend": "100% — portfolio filters, vendor profile page, order review submit + persistence, business profile city/work_types all verified"},
+  "test_credentials": "POST /api/auth/demo roles: contractor_buyer | supplier_vendor | designer_creator | admin",
+  "seed_data_creation": "Tests created several released orders (one via E2E UI test on supplier listing) and completed custom projects. These are real reviews now visible on user_demo_supplier vendor page (rating avg bumped to 4.9, 7 review cards). test_business_profile_city_work_types_persisted left user_demo_buyer with a PENDING business_profile (city=Surabaya) — flagged for admin cleanup if next iteration needs demo buyer with no profile. test_zz_restore_demo_supplier_verified ensures supplier stays VERIFIED.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: `REACT_APP_BACKEND_URL=https://matshop-3.preview.emergentagent.com MONGO_URL=mongodb://localhost:27017 DB_NAME=test_database python -m pytest backend/tests/ -n 0 --junitxml=/app/test_reports/pytest/pytest_results.xml`. SERIAL (-n 0) MANDATORY due to shared demo user state. New review endpoints under /api (POST /api/reviews, GET /api/reviews/ref/{ref_id}, GET /api/vendors/{user_id}, GET /api/portfolios, GET /api/portfolios/filters). Key frontend testids: portfolio-section, portfolio-grid, portfolio-filter-city, portfolio-filter-work-type, portfolio-sort, portfolio-empty, portfolio-see-all, portfolio-card-{uid}, portfolio-rating-{uid}, portfolio-page, vendor-profile-page, vendor-name, vendor-verified-badge, vendor-city, vendor-rating-badge, vendor-gallery, vendor-main-photo, vendor-thumb-{i}, vendor-stat-projects, vendor-reviews, vendor-rating-avg, vendor-no-reviews, vendor-review-{id}, vendor-cta-request, vendor-cta-order, vendor-cta-external, vendor-listings, vendor-not-found, review-form, review-star-1..5, review-comment-input, review-submit-button, review-submitted, profile-city-input, profile-work-types, profile-work-type-{key}. Only buyer of status=released order OR client of status=completed custom project can review. db.reviews unique (source, ref_id).",
+  "rca of the issue": "N/A — no bugs found."
+}

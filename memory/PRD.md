@@ -26,9 +26,9 @@ Marketplace hibrida B2B/B2C + Jasa/Aset Kreator "MatShop.id" (requested Next.js/
 - DONE: Vendor verification: 'Profil Usaha & Portofolio' tab (nama usaha, alamat, link portofolio, foto, PIC) → users.verification_status PENDING; bidding locked (UI + backend 403) unless VERIFIED; admin 'Verifikasi Vendor' tab to VERIFY/REJECT (with note) + notifications
 - DONE: Progress tracking (executor posts % + photos, monotonic; dual progress bars reported vs milestone released, live polling) + Takeover Protocol (admin 'Monitoring & Takeover' tab → INTERNAL_TAKEOVER, escrow held → Master Workshop MatShop (user_master_workshop, ledger escrow_ledger), contractor suspended, client guarantee notification; admin unsuspend)
 - DONE: Homepage 'Hasil Karya Kontraktor & Desainer MatShop' section (public GET /api/portfolios of VERIFIED non-suspended vendors, dialog gallery + their listings via /api/listings?owner= + CTA Ajukan Proyek Custom); 2 showcase vendors seeded
+- DONE (2026-06): Public vendor profile /vendor/:id (header, stats, gallery, reviews + breakdown, listings, CTA Ajukan Proyek/Order) — backend reviews.py; Rating & Ulasan 1–5 + teks only for buyer of released order or client of completed custom project (unique per transaksi), avg on portfolio cards/profile, vendor notified; portfolio filters kota + jenis pekerjaan + sort rating on homepage & /portofolio; business profile city + work_types; seeded 9 demo reviews
 - NEXT: milestone dispute to admin, vendor portfolio/rating for bids, survey scheduling
 - DONE: Admin mediation panel (/admin, refund_buyer→REFUNDED / release_vendor→COMPLETED), dispute photo evidence, cargo tracking (loading→departed→in_transit→arrived), NPWP tax info on checkout/order + invoice DPP/PPN 11%
 - P1: Real payment gateway (Midtrans/Xendit/Stripe), dispute flow, auto-release timer
-- P1: Reviews & ratings, seller profile/storefront pages
 - P2: Quote request (RFQ) for B2B bulk, shipping cost calculator, chat buyer-seller
 - P2: Restrict self-enabling seller roles (verification/KYC)
