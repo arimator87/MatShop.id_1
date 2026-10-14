@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Search, ShoppingCart } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { UserMenu } from "@/components/UserMenu";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 
@@ -43,6 +44,7 @@ export const Navbar = () => {
             className="bg-transparent outline-none text-sm flex-1 placeholder:text-slate-400" />
         </form>
         <div className="ml-auto flex items-center gap-2">
+          {user && <NotificationBell />}
           <Link to="/keranjang" data-testid="nav-cart-button"
             className="relative w-10 h-10 grid place-items-center rounded-full hover:bg-slate-100 transition-colors">
             <ShoppingCart className="w-5 h-5 text-slate-700" />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { RequestForm } from "@/components/custom/RequestForm";
 import { ArrowUpRight, MapPin, Plus } from "lucide-react";
 import { api, imgSrc } from "@/lib/api";
 import { rupiah } from "@/lib/format";
@@ -17,12 +18,12 @@ export const ProjectCard = ({ p, badge }) => {
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">{p.project_id} · {WORK_TYPES[p.work_type].label}</span>
-          <span className={`text-[11px] px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+          <span className={`text-[11px] px-2 py-0.5 rounded-full ${st.cls}`} data-testid={`project-card-status-${p.project_id}`}><span className="font-mono">{st.code}</span> · {st.label}</span>
           {badge}
         </div>
         <div className="font-heading font-semibold line-clamp-1 group-hover:text-amber-700">{p.title}</div>
-        <div className="text-xs text-slate-600 flex items-center gap-1"><MapPin className="w-3 h-3" />{p.city} · {p.size} {UNIT_LABEL[p.unit]} · {FINISHING[p.finishing].label}</div>
-        <div className="text-sm font-mono">{p.contract_amount ? `Kontrak ${rupiah(p.contract_amount)} · Milestone ${done}/3` : `Estimasi ${rupiah(p.estimate_min)} – ${rupiah(p.estimate_max)} · ${p.bid_count} penawaran`}</div>
+        <div className="text-xs text-slate-600 flex items-center gap-1"><MapPin className="w-3 h-3" />{p.city}{p.size ? ` · ${p.size} ${UNIT_LABEL[p.unit]}` : ""}{p.finishing ? ` · ${FINISHING[p.finishing].label}` : ""}</div>
+        <div className="text-sm font-mono">{p.contract_amount ? `Kontrak ${rupiah(p.contract_amount)} · Milestone ${done}/3` : `Budget ${rupiah(p.budget ?? p.estimate_max)} · ${p.bid_count} penawaran`}</div>
       </div>
       <ArrowUpRight className="w-5 h-5 text-slate-400 shrink-0" />
     </Link>
@@ -59,13 +60,16 @@ export const ProjectOpportunities = () => {
 
 export const MyCustomProjects = () => {
   const [items, setItems] = useState(null);
-  useEffect(() => { api.get("/custom/projects/mine").then(({ data }) => setItems(data)); }, []);
+  const [showForm, setShowForm] = useState(false);
+  const load = () => api.get("/custom/projects/mine").then(({ data }) => setItems(data));
+  useEffect(() => { load(); }, []);
   return (
     <div className="space-y-4" data-testid="my-custom-projects">
       <div className="flex justify-end">
-        <Link to="/custom-project/ajukan" data-testid="my-projects-new-button"
-          className="h-10 px-5 rounded-full bg-[#1E242B] text-white text-sm font-semibold inline-flex items-center gap-2"><Plus className="w-4 h-4" /> Ajukan Proyek Custom</Link>
+        <button onClick={() => setShowForm(!showForm)} data-testid="my-projects-new-button"
+          className="h-10 px-5 rounded-full bg-[#1E242B] text-white text-sm font-semibold inline-flex items-center gap-2"><Plus className="w-4 h-4" /> {showForm ? "Tutup Form" : "Ajukan Proyek Custom Furniture / Fit-Out"}</button>
       </div>
+      {showForm && <RequestForm onCreated={() => { setShowForm(false); load(); }} />}
       <List items={items} testid="my-projects-list" empty="Belum ada proyek custom. Coba kalkulator estimasi di menu Custom Furniture." />
     </div>
   );

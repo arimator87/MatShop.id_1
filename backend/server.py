@@ -840,6 +840,20 @@ async def seller_stats(request: Request):
             "disputed": len([o for o in orders if o["status"] == "disputed"]), "listings": listings}
 
 
+@api.get("/notifications")
+async def list_notifications(request: Request):
+    user = await get_user(request)
+    items = await db.notifications.find({"user_id": user.user_id}, {"_id": 0}).sort("created_at", -1).to_list(30)
+    return {"items": items, "unread": await db.notifications.count_documents({"user_id": user.user_id, "read": False})}
+
+
+@api.post("/notifications/read-all")
+async def read_notifications(request: Request):
+    user = await get_user(request)
+    await db.notifications.update_many({"user_id": user.user_id, "read": False}, {"$set": {"read": True}})
+    return {"ok": True}
+
+
 @api.get("/")
 async def root():
     return {"message": "MatShop.id API"}

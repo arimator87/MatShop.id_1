@@ -3,7 +3,7 @@ import { ChefHat, DoorClosed, Sofa } from "lucide-react";
 export const WORK_TYPES = {
   kitchen_set: { label: "Kitchen Set", unit: "m_lari", icon: ChefHat, hint: "Panjang kabinet (meter lari)" },
   wardrobe: { label: "Wardrobe / Lemari Tanam", unit: "m_lari", icon: DoorClosed, hint: "Lebar lemari (meter lari)" },
-  full_interior: { label: "Full Interior Apartemen/Rumah", unit: "m2", icon: Sofa, hint: "Luas ruangan (m²)" },
+  full_interior: { label: "Fit-Out Apartemen/Rumah", unit: "m2", icon: Sofa, hint: "Luas ruangan (m²)" },
 };
 export const UNIT_LABEL = { m_lari: "meter lari", m2: "m²" };
 export const FINISHING = {
@@ -16,11 +16,13 @@ export const MILESTONES = [
   { key: "m3", label: "Pemasangan di Lokasi & Serah Terima", pct: 30 },
 ];
 export const PROJECT_STATUS = {
-  open: { label: "Menerima Penawaran", cls: "bg-amber-100 text-amber-800" },
-  awarded: { label: "Vendor Terpilih", cls: "bg-blue-100 text-blue-800" },
-  in_progress: { label: "Dalam Pengerjaan", cls: "bg-blue-100 text-blue-800" },
-  completed: { label: "Selesai · Serah Terima", cls: "bg-green-100 text-green-800" },
-  cancelled: { label: "Dibatalkan", cls: "bg-slate-100 text-slate-600" },
+  pending_review: { code: "PENDING_REVIEW_INTERNAL", label: "Ditinjau Tim MatShop", cls: "bg-slate-100 text-slate-700" },
+  rejected: { code: "REJECTED", label: "Ditolak", cls: "bg-red-100 text-red-700" },
+  open: { code: "OPEN_FOR_BID", label: "Menerima Penawaran", cls: "bg-amber-100 text-amber-800" },
+  awarded: { code: "AWARDED", label: "Pemenang Dipilih · Menunggu DP", cls: "bg-blue-100 text-blue-800" },
+  in_progress: { code: "IN_PROGRESS", label: "Dalam Pengerjaan", cls: "bg-blue-100 text-blue-800" },
+  completed: { code: "COMPLETED", label: "Selesai · Serah Terima", cls: "bg-green-100 text-green-800" },
+  cancelled: { code: "CANCELLED", label: "Dibatalkan", cls: "bg-slate-100 text-slate-600" },
 };
 export const MS_STATUS = {
   pending: { label: "Belum Dibayar", cls: "text-slate-500" },

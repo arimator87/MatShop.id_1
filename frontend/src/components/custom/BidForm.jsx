@@ -14,6 +14,7 @@ export const BidForm = ({ project, existing, onDone }) => {
   ]);
   const [days, setDays] = useState(existing?.duration_days || 21);
   const [notes, setNotes] = useState(existing?.notes || "");
+  const [spec, setSpec] = useState(existing?.material_spec || "");
   const [busy, setBusy] = useState(false);
   const total = items.reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.price) || 0), 0);
   const upd = (k, field, v) => setItems(items.map((x, j) => (j === k ? { ...x, [field]: v } : x)));
@@ -22,7 +23,7 @@ export const BidForm = ({ project, existing, onDone }) => {
     setBusy(true);
     try {
       await api.post(`/custom/projects/${project.project_id}/bids`, {
-        duration_days: Number(days), notes,
+        duration_days: Number(days), notes, material_spec: spec,
         rab_items: items.filter((i) => i.item && i.price).map((i) => ({ ...i, qty: Number(i.qty), price: Number(i.price) })),
       });
       toast.success(existing ? "Penawaran diperbarui" : "Penawaran RAB terkirim ke klien");
@@ -33,7 +34,7 @@ export const BidForm = ({ project, existing, onDone }) => {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4" data-testid="bid-form">
-      <h3 className="font-heading font-semibold text-lg">{existing ? "Perbarui Penawaran / RAB" : "Ajukan Penawaran / RAB"}</h3>
+      <h3 className="font-heading font-semibold text-lg">{existing ? "Perbarui Proposal Penawaran" : "Ajukan Proposal Penawaran"} · Estimasi Harga / RAB</h3>
       <div className="space-y-2 overflow-x-auto">
         <div className="grid grid-cols-[minmax(160px,1fr)_70px_80px_120px_110px_32px] gap-2 text-xs font-mono uppercase text-slate-500 min-w-[600px]">
           <span>Item Pekerjaan</span><span>Qty</span><span>Satuan</span><span>Harga</span><span className="text-right">Subtotal</span><span />
@@ -57,9 +58,12 @@ export const BidForm = ({ project, existing, onDone }) => {
         <label className="space-y-1 sm:col-span-2"><span className="text-xs text-slate-600">Catatan penawaran</span>
           <input className={`${inputCls} w-full`} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Garansi, merk material, jadwal survey..." data-testid="bid-notes-input" /></label>
       </div>
+      <label className="block space-y-1"><span className="text-xs text-slate-600">Catatan spesifikasi material (wajib)</span>
+        <textarea className="w-full h-20 p-3 rounded-lg border border-slate-300 outline-none focus:border-amber-600 text-sm" value={spec} onChange={(e) => setSpec(e.target.value)}
+          placeholder="Plywood meranti 18mm, HPL Taco TH-xxx, engsel Blum soft-close, top table granit hitam..." data-testid="bid-material-spec-input" /></label>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dashed pt-4">
         <div>Total RAB <span className="font-heading text-2xl font-bold ml-2" data-testid="bid-total">{rupiah(total)}</span></div>
-        <button onClick={submit} disabled={busy || total <= 0} data-testid="bid-submit-button"
+        <button onClick={submit} disabled={busy || total <= 0 || spec.trim().length < 5} data-testid="bid-submit-button"
           className="h-11 px-6 rounded-full bg-amber-600 text-white font-semibold inline-flex items-center gap-2 disabled:opacity-50">
           {busy && <Loader2 className="w-4 h-4 animate-spin" />} {existing ? "Perbarui Penawaran" : "Kirim Penawaran"}
         </button>

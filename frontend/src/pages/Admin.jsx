@@ -7,6 +7,8 @@ import { api, errMsg } from "@/lib/api";
 import { rupiah } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 import { OrderCard } from "@/components/OrderCard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProjectReviewBoard } from "@/components/custom/ProjectReviewBoard";
 
 const DECISIONS = {
   refund_buyer: { label: "Refund ke Buyer", icon: RotateCcw, cls: "bg-purple-600 hover:bg-purple-700" },
@@ -71,9 +73,16 @@ export default function Admin() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8" data-testid="admin-page">
       <div>
         <div className="text-xs font-mono uppercase tracking-widest text-amber-600 mb-2 flex items-center gap-2"><Gavel className="w-4 h-4" /> Admin MatShop</div>
-        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Panel Mediasi Komplain</h1>
-        <p className="text-slate-600 mt-2">Tinjau komplain buyer beserta bukti foto, lalu putuskan refund ke buyer atau rilis dana ke vendor.</p>
+        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Panel Internal MatShop</h1>
+        <p className="text-slate-600 mt-2">Review request proyek custom (Managed Open-Bid) dan mediasi komplain transaksi.</p>
       </div>
+      <Tabs defaultValue="projects">
+      <TabsList className="h-auto flex-wrap justify-start bg-[#F1EFE9] p-1 rounded-full">
+        <TabsTrigger value="projects" data-testid="admin-tab-projects" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Managed Project Board</TabsTrigger>
+        <TabsTrigger value="disputes" data-testid="admin-tab-disputes" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Mediasi Komplain</TabsTrigger>
+      </TabsList>
+      <TabsContent value="projects" className="mt-6"><ProjectReviewBoard /></TabsContent>
+      <TabsContent value="disputes" className="mt-6 space-y-8">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat icon={ShieldAlert} label="Komplain Terbuka" value={stats?.open ?? "-"} testid="admin-stat-open" />
         <Stat icon={Wallet} label="Dana Dibekukan" value={rupiah(stats?.frozen_amount)} testid="admin-stat-frozen" />
@@ -101,6 +110,8 @@ export default function Admin() {
           ))}
         </div>
       )}
+      </TabsContent>
+      </Tabs>
       {resolving && <ResolveDialog {...resolving} onClose={() => setResolving(null)} onDone={() => { setResolving(null); load(); }} />}
     </div>
   );

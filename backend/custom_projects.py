@@ -10,7 +10,7 @@ ctx = {}
 WORK_TYPES = {
     "kitchen_set": {"label": "Kitchen Set", "unit": "m_lari"},
     "wardrobe": {"label": "Wardrobe / Lemari Tanam", "unit": "m_lari"},
-    "full_interior": {"label": "Full Interior Apartemen/Rumah", "unit": "m2"},
+    "full_interior": {"label": "Fit-Out Apartemen/Rumah", "unit": "m2"},
 }
 UNIT_LABEL = {"m_lari": "meter lari", "m2": "m²"}
 FINISHING = {"hpl": "HPL", "duco": "Duco"}
@@ -52,8 +52,12 @@ class EstimateIn(BaseModel):
     finishing: str
 
 
-class ProjectIn(EstimateIn):
-    title: str = Field(min_length=3)
+class ProjectIn(BaseModel):
+    work_type: str
+    budget: float = Field(gt=0)
+    size: Optional[float] = Field(default=None, gt=0, le=1000)
+    finishing: Optional[str] = None
+    title: str = ""
     description: str = Field(min_length=10)
     address: str = Field(min_length=5)
     city: str = Field(min_length=2)
@@ -72,11 +76,21 @@ class RabItem(BaseModel):
 class BidIn(BaseModel):
     duration_days: int = Field(gt=0, le=365)
     notes: str = ""
+    material_spec: str = Field(min_length=5)
     rab_items: List[RabItem] = Field(min_length=1)
 
 
 class NoteIn(BaseModel):
     note: str = Field(min_length=3)
+
+
+class ReviewIn(BaseModel):
+    note: str = ""
+
+
+async def notify(user_id, title, body, link):
+    await db().notifications.insert_one({"id": uuid.uuid4().hex, "user_id": user_id, "title": title, "body": body,
+                                         "link": link, "read": False, "created_at": now_iso()})
 
 
 def event(note):
@@ -96,11 +110,16 @@ async def post_estimate(body: EstimateIn):
 @router.post("/projects")
 async def create_project(body: ProjectIn, request: Request):
     user = await user_of(request)
-    est = estimate(body.work_type, body.size, body.finishing)
-    doc = {**body.model_dump(), "project_id": f"CP-{uuid.uuid4().hex[:8].upper()}", "client_id": user.user_id,
-           "client_name": user.name, "estimate_min": est["min"], "estimate_max": est["max"], "unit": est["unit"],
-           "status": "open", "bid_count": 0, "vendor_id": None, "milestones": [],
-           "timeline": [event("Request proyek diajukan, menunggu penawaran vendor")], "created_at": now_iso()}
+    if body.work_type not in WORK_TYPES:
+        raise HTTPException(400, "Kategori tidak valid")
+    est = estimate(body.work_type, body.size, body.finishing) if body.size and body.finishing else {}
+    data = body.model_dump()
+    data["title"] = body.title.strip() or f"{WORK_TYPES[body.work_type]['label']} · {body.city}"
+    doc = {**data, "project_id": f"CP-{uuid.uuid4().hex[:8].upper()}", "client_id": user.user_id,
+           "client_name": user.name, "estimate_min": est.get("min"), "estimate_max": est.get("max"),
+           "unit": WORK_TYPES[body.work_type]["unit"], "status": "pending_review", "bid_count": 0, "vendor_id": None,
+           "milestones": [], "timeline": [event("Request diajukan. Menunggu review internal MatShop (PENDING_REVIEW_INTERNAL)")],
+           "created_at": now_iso()}
     await db().custom_projects.insert_one(doc)
     doc.pop("_id", None)
     return doc
@@ -161,7 +180,8 @@ async def submit_bid(project_id: str, body: BidIn, request: Request):
     items = [{**i.model_dump(), "subtotal": i.qty * i.price} for i in body.rab_items]
     amount = sum(i["subtotal"] for i in items)
     existing = await db().project_bids.find_one({"project_id": project_id, "vendor_id": user.user_id}, {"_id": 0})
-    data = {"duration_days": body.duration_days, "notes": body.notes, "rab_items": items, "amount": amount, "updated_at": now_iso()}
+    data = {"duration_days": body.duration_days, "notes": body.notes, "material_spec": body.material_spec,
+            "rab_items": items, "amount": amount, "updated_at": now_iso()}
     if existing:
         await db().project_bids.update_one({"bid_id": existing["bid_id"]}, {"$set": data})
         bid_id = existing["bid_id"]
@@ -170,6 +190,8 @@ async def submit_bid(project_id: str, body: BidIn, request: Request):
         await db().project_bids.insert_one({**data, "bid_id": bid_id, "project_id": project_id, "vendor_id": user.user_id,
                                             "vendor_name": user.name, "status": "pending", "created_at": now_iso()})
         await db().custom_projects.update_one({"project_id": project_id}, {"$inc": {"bid_count": 1}})
+        await notify(p["client_id"], "Penawaran baru masuk", f"{user.name} mengajukan penawaran Rp {amount:,.0f} untuk {p['title']}".replace(",", "."),
+                     f"/custom-project/{project_id}")
     return await db().project_bids.find_one({"bid_id": bid_id}, {"_id": 0})
 
 
@@ -191,6 +213,8 @@ async def accept_bid(project_id: str, bid_id: str, request: Request):
         ms.append({**m, "amount": value, "status": "pending"})
     await db().project_bids.update_many({"project_id": project_id, "bid_id": {"$ne": bid_id}}, {"$set": {"status": "rejected"}})
     await db().project_bids.update_one({"bid_id": bid_id}, {"$set": {"status": "accepted"}})
+    await notify(bid["vendor_id"], "Penawaran Anda menang!", f"Klien memilih Anda untuk {p['title']}. Tunggu DP milestone 1 (30%)",
+                 f"/custom-project/{project_id}")
     await db().custom_projects.update_one({"project_id": project_id}, {
         "$set": {"status": "awarded", "vendor_id": bid["vendor_id"], "vendor_name": bid["vendor_name"], "contract_amount": amt,
                  "accepted_bid_id": bid_id, "duration_days": bid["duration_days"], "milestones": ms},
@@ -247,8 +271,49 @@ async def release_milestone(project_id: str, key: str, request: Request):
 async def cancel_project(project_id: str, request: Request):
     user = await user_of(request)
     p = await load(project_id)
-    if p["client_id"] != user.user_id or p["status"] != "open":
+    if p["client_id"] != user.user_id or p["status"] not in ("open", "pending_review"):
         raise HTTPException(400, "Hanya proyek terbuka milik Anda yang bisa dibatalkan")
     await db().custom_projects.update_one({"project_id": project_id}, {"$set": {"status": "cancelled"},
                                                                        "$push": {"timeline": event("Request dibatalkan klien")}})
     return await load(project_id)
+
+
+async def require_admin(request: Request):
+    user = await user_of(request)
+    if not user.is_admin:
+        raise HTTPException(403, "Khusus admin MatShop")
+    return user
+
+
+@router.get("/admin/projects")
+async def admin_projects(request: Request, status: str = "pending_review"):
+    await require_admin(request)
+    flt = {} if status == "all" else {"status": status}
+    return await db().custom_projects.find(flt, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+
+async def review(project_id: str, request: Request, approve: bool, note: str):
+    admin = await require_admin(request)
+    p = await load(project_id)
+    if p["status"] != "pending_review":
+        raise HTTPException(400, "Proyek tidak dalam status PENDING_REVIEW_INTERNAL")
+    status = "open" if approve else "rejected"
+    msg = ("Disetujui tim MatShop. Proyek dibuka untuk penawaran (OPEN_FOR_BID)" if approve
+           else "Request ditolak tim MatShop") + (f". Catatan: {note}" if note else "")
+    await db().custom_projects.update_one({"project_id": project_id}, {
+        "$set": {"status": status, "review": {"by": admin.name, "note": note, "at": now_iso(), "approved": approve}},
+        "$push": {"timeline": event(msg)}})
+    await notify(p["client_id"], "Proyek disetujui" if approve else "Proyek ditolak", msg, f"/custom-project/{project_id}")
+    return await load(project_id)
+
+
+@router.post("/admin/projects/{project_id}/approve")
+async def approve_project(project_id: str, body: ReviewIn, request: Request):
+    return await review(project_id, request, True, body.note)
+
+
+@router.post("/admin/projects/{project_id}/reject")
+async def reject_project(project_id: str, body: ReviewIn, request: Request):
+    if len(body.note.strip()) < 5:
+        raise HTTPException(400, "Alasan penolakan wajib diisi")
+    return await review(project_id, request, False, body.note)

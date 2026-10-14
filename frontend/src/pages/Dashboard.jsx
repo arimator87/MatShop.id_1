@@ -21,7 +21,7 @@ const TAB_CONFIG = {
   supplier_vendor: [
     { key: "stok", label: "Stok Material", el: <MyListings types={MATERIAL} /> },
     { key: "pesanan", label: "Pesanan Masuk", el: <SellerOrders /> },
-    { key: "peluang", label: "Peluang Proyek", el: <ProjectOpportunities /> },
+    { key: "peluang", label: "Project Board", el: <ProjectOpportunities /> },
   ],
   designer_creator: [
     { key: "aset", label: "Aset 3D Saya", el: <MyListings types={ASSET} /> },
@@ -33,7 +33,7 @@ const TAB_CONFIG = {
     { key: "aset", label: "Aset Digital Terbeli", el: <PurchasedAssets /> },
     { key: "escrow", label: "Status Escrow Payment", el: <div className="space-y-6"><EscrowSummary /><BuyerOrders /></div> },
     { key: "custom", label: "Proyek Custom Saya", el: <MyCustomProjects /> },
-    { key: "peluang", label: "Peluang Proyek", el: <ProjectOpportunities /> },
+    { key: "peluang", label: "Project Board", el: <ProjectOpportunities /> },
   ],
 };
 

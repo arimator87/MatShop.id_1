@@ -17,6 +17,7 @@ export const BidCard = ({ bid, canAccept, onAccept }) => {
           <span className={`text-[11px] px-2 py-0.5 rounded-full ${badge}`}>{{ accepted: "Diterima", rejected: "Tidak dipilih", pending: "Menunggu" }[bid.status]}</span>
         </div>
       </div>
+      {bid.material_spec && <div className="text-sm bg-[#F8F7F4] border border-slate-200 rounded-md p-3" data-testid={`bid-spec-${bid.bid_id}`}><span className="text-[10px] font-mono uppercase text-slate-500 block">Spesifikasi material</span>{bid.material_spec}</div>}
       {bid.notes && <p className="text-sm text-slate-600">{bid.notes}</p>}
       <button onClick={() => setOpen(!open)} className="text-xs font-semibold text-amber-700" data-testid={`bid-toggle-rab-${bid.bid_id}`}>{open ? "Sembunyikan" : "Lihat"} rincian RAB</button>
       {open && (
@@ -30,7 +31,7 @@ export const BidCard = ({ bid, canAccept, onAccept }) => {
       )}
       {canAccept && bid.status === "pending" && (
         <button onClick={() => onAccept(bid)} data-testid={`bid-accept-${bid.bid_id}`}
-          className="h-10 px-5 rounded-full bg-[#1E242B] text-white text-sm font-semibold inline-flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Pilih Vendor Ini</button>
+          className="h-10 px-5 rounded-full bg-[#1E242B] text-white text-sm font-semibold inline-flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Pilih Pemenang & Bayar DP 30% ({rupiah(Math.round(bid.amount * 0.3))})</button>
       )}
     </div>
   );

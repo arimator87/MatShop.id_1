@@ -26,7 +26,7 @@ export default function CustomProject() {
     return () => clearTimeout(t);
   }, [type, size, finishing]);
 
-  const query = new URLSearchParams({ type, size, finishing }).toString();
+  const query = new URLSearchParams({ type, size, finishing, ...(est ? { budget: Math.round((est.min + est.max) / 2) } : {}) }).toString();
 
   return (
     <div data-testid="custom-project-page">

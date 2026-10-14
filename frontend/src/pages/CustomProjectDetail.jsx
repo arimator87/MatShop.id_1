@@ -23,9 +23,14 @@ export default function CustomProjectDetail() {
 
   const st = PROJECT_STATUS[p.status];
   const accept = async (bid) => {
-    if (!window.confirm(`Pilih ${bid.vendor_name} dengan nilai ${rupiah(bid.amount)}?`)) return;
-    try { await api.post(`/custom/projects/${p.project_id}/bids/${bid.bid_id}/accept`); toast.success("Vendor terpilih. Silakan bayar Milestone 1 (30%)"); load(); }
-    catch (e) { toast.error(errMsg(e)); }
+    const dp = Math.round(bid.amount * 0.3);
+    if (!window.confirm(`Pilih ${bid.vendor_name} (${rupiah(bid.amount)}) sebagai pemenang dan bayar DP Milestone 1 sebesar ${rupiah(dp)} ke Escrow MatShop?`)) return;
+    try {
+      await api.post(`/custom/projects/${p.project_id}/bids/${bid.bid_id}/accept`);
+      await api.post(`/custom/projects/${p.project_id}/milestones/m1/pay`);
+      toast.success("Pemenang dipilih & DP 30% ditahan di Escrow MatShop");
+    } catch (e) { toast.error(errMsg(e)); }
+    load();
   };
   const cancel = async () => {
     try { await api.post(`/custom/projects/${p.project_id}/cancel`); toast.success("Request dibatalkan"); load(); } catch (e) { toast.error(errMsg(e)); }
@@ -39,11 +44,12 @@ export default function CustomProjectDetail() {
         <div>
           <div className="text-xs font-mono uppercase tracking-widest text-amber-600 mb-2">{p.project_id} · {WORK_TYPES[p.work_type].label}</div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{p.title}</h1>
-          <span className={`inline-block mt-3 text-xs font-medium px-2.5 py-1 rounded-full ${st.cls}`} data-testid="project-status">{st.label}</span>
+          <span className={`inline-block mt-3 text-xs font-medium px-2.5 py-1 rounded-full ${st.cls}`} data-testid="project-status"><span className="font-mono">{st.code}</span> · {st.label}</span>
         </div>
         <div className="text-right">
-          <div className="text-xs font-mono uppercase text-slate-500">{p.contract_amount ? "Nilai Kontrak" : "Estimasi Sistem"}</div>
-          <div className="font-heading text-2xl font-bold" data-testid="project-value">{p.contract_amount ? rupiah(p.contract_amount) : `${rupiah(p.estimate_min)} – ${rupiah(p.estimate_max)}`}</div>
+          <div className="text-xs font-mono uppercase text-slate-500">{p.contract_amount ? "Nilai Kontrak" : "Est. Budget Klien"}</div>
+          <div className="font-heading text-2xl font-bold" data-testid="project-value">{rupiah(p.contract_amount || p.budget || p.estimate_max)}</div>
+          {!p.contract_amount && p.estimate_min && <div className="text-xs text-slate-500">Estimasi sistem {rupiah(p.estimate_min)} – {rupiah(p.estimate_max)}</div>}
           {p.vendor_name && <div className="text-sm text-slate-600">Vendor: {p.vendor_name}</div>}
         </div>
       </div>
@@ -57,15 +63,23 @@ export default function CustomProjectDetail() {
           )}
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
-          <Info icon={Ruler}>{p.size} {UNIT_LABEL[p.unit]} · Finishing {FINISHING[p.finishing].label}</Info>
+          {p.size && <Info icon={Ruler}>{p.size} {UNIT_LABEL[p.unit]}{p.finishing ? ` · Finishing ${FINISHING[p.finishing].label}` : ""}</Info>}
           <Info icon={MapPin}>{p.address}, {p.city}</Info>
           {p.phone && <Info icon={Phone}>{p.phone}</Info>}
           {p.survey_date && <Info icon={CalendarDays}>Survey diinginkan: {p.survey_date}</Info>}
           <div className="text-xs text-slate-500">Klien: {p.client_name}</div>
-          {p.viewer === "client" && p.status === "open" && <button onClick={cancel} data-testid="project-cancel-button" className="text-xs text-red-600 hover:underline">Batalkan request</button>}
+          {p.viewer === "client" && ["open", "pending_review"].includes(p.status) && <button onClick={cancel} data-testid="project-cancel-button" className="text-xs text-red-600 hover:underline">Batalkan request</button>}
         </div>
       </div>
 
+      {p.status === "pending_review" && (
+        <div className="rounded-xl border border-slate-300 bg-slate-50 p-5 text-sm" data-testid="project-pending-banner">
+          <b className="font-mono">PENDING_REVIEW_INTERNAL</b> · Tim MatShop sedang meninjau request Anda. Setelah disetujui, proyek dibuka ke kontraktor terverifikasi (OPEN_FOR_BID) dan Anda akan menerima notifikasi setiap ada penawaran.
+        </div>
+      )}
+      {p.status === "rejected" && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800" data-testid="project-rejected-banner">Request ditolak tim MatShop. {p.review?.note}</div>
+      )}
       {p.milestones?.length > 0 && (
         <section className="space-y-4">
           <h2 className="font-heading text-xl font-semibold">Escrow Bertahap (Milestone Payment)</h2>
