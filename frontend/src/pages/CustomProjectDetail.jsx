@@ -9,6 +9,8 @@ import { MilestoneTracker } from "@/components/custom/MilestoneTracker";
 import { MilestoneAction } from "@/components/custom/MilestoneAction";
 import { BidForm } from "@/components/custom/BidForm";
 import { BidCard } from "@/components/custom/BidCard";
+import { ProjectProgress } from "@/components/custom/ProjectProgress";
+import { ProgressUpdateForm } from "@/components/custom/ProgressUpdateForm";
 
 const Info = ({ icon: Icon, children }) => <div className="flex items-center gap-2 text-sm text-slate-700"><Icon className="w-4 h-4 text-slate-400" />{children}</div>;
 
@@ -16,7 +18,7 @@ export default function CustomProjectDetail() {
   const { projectId } = useParams();
   const [p, setP] = useState(null);
   const load = useCallback(() => api.get(`/custom/projects/${projectId}`).then(({ data }) => setP(data)).catch(() => setP(false)), [projectId]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); const t = setInterval(load, 20000); return () => clearInterval(t); }, [load]);
 
   if (p === false) return <div className="py-32 text-center" data-testid="project-not-found">Proyek tidak ditemukan atau sudah ditangani vendor lain.</div>;
   if (!p) return <div className="py-32 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin" /></div>;
@@ -80,6 +82,14 @@ export default function CustomProjectDetail() {
       {p.status === "rejected" && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800" data-testid="project-rejected-banner">Request ditolak tim MatShop. {p.review?.note}</div>
       )}
+      {p.status === "internal_takeover" && (
+        <div className="rounded-xl border-2 border-red-300 bg-red-50 p-5 space-y-1 text-sm text-red-900" data-testid="takeover-banner">
+          <div className="font-heading font-semibold text-base">INTERNAL_TAKEOVER · Garansi Penyelesaian MatShop.id</div>
+          <p>Proyek diambil alih <b>Master Workshop MatShop</b> dari {p.original_vendor_name}. Sisa dana escrow {rupiah(p.takeover?.escrow_transferred)} dialihkan ke Master Workshop; milestone tersisa tetap dibayar via escrow dan MatShop menjamin penyelesaian proyek.</p>
+        </div>
+      )}
+      {p.vendor_id && <ProjectProgress p={p} />}
+      {p.viewer === "vendor" && ["awarded", "in_progress", "internal_takeover"].includes(p.status) && <ProgressUpdateForm p={p} onSaved={merge} />}
       {p.milestones?.length > 0 && (
         <section className="space-y-4">
           <h2 className="font-heading text-xl font-semibold">Escrow Bertahap (Milestone Payment)</h2>

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { RequestForm } from "@/components/custom/RequestForm";
 import { VerificationGate } from "@/components/verify/VerificationGate";
+import { ProgressBars } from "@/components/custom/ProjectProgress";
+import { ProgressUpdateForm } from "@/components/custom/ProgressUpdateForm";
 import { ArrowUpRight, MapPin, Plus } from "lucide-react";
 import { api, imgSrc } from "@/lib/api";
 import { rupiah } from "@/lib/format";
@@ -25,6 +27,7 @@ export const ProjectCard = ({ p, badge }) => {
         <div className="font-heading font-semibold line-clamp-1 group-hover:text-amber-700">{p.title}</div>
         <div className="text-xs text-slate-600 flex items-center gap-1"><MapPin className="w-3 h-3" />{p.city}{p.size ? ` · ${p.size} ${UNIT_LABEL[p.unit]}` : ""}{p.finishing ? ` · ${FINISHING[p.finishing].label}` : ""}</div>
         <div className="text-sm font-mono">{p.contract_amount ? `Kontrak ${rupiah(p.contract_amount)} · Milestone ${done}/3` : `Budget ${rupiah(p.budget ?? p.estimate_max)} · ${p.bid_count} penawaran`}</div>
+        {p.contract_amount && <div className="pt-2 max-w-md"><ProgressBars p={p} compact /></div>}
       </div>
       <ArrowUpRight className="w-5 h-5 text-slate-400 shrink-0" />
     </Link>
@@ -35,6 +38,22 @@ const List = ({ items, empty, testid, badge }) => {
   if (!items) return <div className="h-32 rounded-xl bg-[#F1EFE9] animate-pulse" />;
   if (!items.length) return <div className="py-12 text-center border border-dashed border-slate-300 rounded-xl text-slate-500" data-testid={`${testid}-empty`}>{empty}</div>;
   return <div className="space-y-3" data-testid={testid}>{items.map((p) => <ProjectCard key={p.project_id} p={p} badge={badge?.(p)} />)}</div>;
+};
+
+const WonProject = ({ p, onSaved }) => {
+  const [open, setOpen] = useState(false);
+  const active = ["awarded", "in_progress"].includes(p.status);
+  return (
+    <div className="space-y-2">
+      <ProjectCard p={p} />
+      {active && (
+        <button onClick={() => setOpen(!open)} data-testid={`toggle-progress-form-${p.project_id}`} className="text-sm font-semibold text-amber-700 hover:underline">
+          {open ? "Tutup form" : "+ Update progres (foto & persentase)"}
+        </button>
+      )}
+      {active && open && <ProgressUpdateForm p={p} onSaved={(d) => { onSaved(d); setOpen(false); }} />}
+    </div>
+  );
 };
 
 export const ProjectOpportunities = () => {
@@ -54,7 +73,11 @@ export const ProjectOpportunities = () => {
       </div>
       <div className="space-y-4">
         <h3 className="font-heading text-lg font-semibold">Proyek yang Saya Menangkan</h3>
-        <List items={mine} testid="won-projects-list" empty="Belum ada proyek yang dimenangkan." />
+        {mine && mine.length > 0 ? (
+          <div className="space-y-4" data-testid="won-projects-list">
+            {mine.map((p) => <WonProject key={p.project_id} p={p} onSaved={(d) => setMine(mine.map((x) => (x.project_id === d.project_id ? d : x)))} />)}
+          </div>
+        ) : <List items={mine} testid="won-projects-list" empty="Belum ada proyek yang dimenangkan." />}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import { OrderCard } from "@/components/OrderCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProjectReviewBoard } from "@/components/custom/ProjectReviewBoard";
 import { VendorVerificationBoard } from "@/components/verify/VendorVerificationBoard";
+import { TakeoverBoard } from "@/components/custom/TakeoverBoard";
 
 const DECISIONS = {
   refund_buyer: { label: "Refund ke Buyer", icon: RotateCcw, cls: "bg-purple-600 hover:bg-purple-700" },
@@ -80,10 +81,12 @@ export default function Admin() {
       <Tabs defaultValue="projects">
       <TabsList className="h-auto flex-wrap justify-start bg-[#F1EFE9] p-1 rounded-full">
         <TabsTrigger value="projects" data-testid="admin-tab-projects" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Managed Project Board</TabsTrigger>
+        <TabsTrigger value="monitor" data-testid="admin-tab-monitor" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Monitoring & Takeover</TabsTrigger>
         <TabsTrigger value="vendors" data-testid="admin-tab-vendors" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Verifikasi Vendor</TabsTrigger>
         <TabsTrigger value="disputes" data-testid="admin-tab-disputes" className="rounded-full px-4 py-2 data-[state=active]:bg-[#1E242B] data-[state=active]:text-white">Mediasi Komplain</TabsTrigger>
       </TabsList>
       <TabsContent value="projects" className="mt-6"><ProjectReviewBoard /></TabsContent>
+      <TabsContent value="monitor" className="mt-6"><TakeoverBoard /></TabsContent>
       <TabsContent value="vendors" className="mt-6"><VendorVerificationBoard /></TabsContent>
       <TabsContent value="disputes" className="mt-6 space-y-8">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

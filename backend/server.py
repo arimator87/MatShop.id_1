@@ -100,6 +100,8 @@ class User(BaseModel):
     active_role: Optional[str] = None
     is_admin: bool = False
     verification_status: Optional[str] = None
+    suspended: bool = False
+    suspended_reason: Optional[str] = None
     verification_note: Optional[str] = None
     business_profile: Optional[dict] = None
     tax_profile: Optional[Dict[str, str]] = None
@@ -897,6 +899,22 @@ async def admin_verify_vendor(user_id: str, body: VerifyIn, request: Request):
                                  "Anda kini bisa mengajukan penawaran di Project Board." if ok else f"Alasan: {body.note}. Perbarui profil lalu kirim ulang.",
                                  "/dashboard?tab=profil")
     return User(**await db.users.find_one({"user_id": user_id}, {"_id": 0}))
+
+
+@api.get("/admin/suspended-users")
+async def admin_suspended(request: Request):
+    await require_admin(request)
+    return [User(**d) for d in await db.users.find({"suspended": True}, {"_id": 0}).to_list(500)]
+
+
+@api.post("/admin/users/{user_id}/unsuspend")
+async def admin_unsuspend(user_id: str, request: Request):
+    await require_admin(request)
+    res = await db.users.update_one({"user_id": user_id}, {"$set": {"suspended": False, "suspended_reason": None}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "User tidak ditemukan")
+    await custom_projects.notify(user_id, "Akun diaktifkan kembali", "Pembekuan akun Anda telah dicabut tim MatShop.id.", "/dashboard")
+    return {"ok": True}
 
 
 @api.get("/notifications")

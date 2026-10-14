@@ -88,6 +88,30 @@ class ReviewIn(BaseModel):
     note: str = ""
 
 
+class ProgressIn(BaseModel):
+    percent: int = Field(ge=0, le=100)
+    note: str = Field(min_length=3)
+    photos: List[str] = Field(default=[], max_length=8)
+
+
+class TakeoverIn(BaseModel):
+    reason: str = Field(min_length=10)
+
+
+MASTER_ID = "user_master_workshop"
+MASTER_NAME = "Master Workshop MatShop"
+ACTIVE = ("awarded", "in_progress", "internal_takeover")
+
+
+def is_executor(p, user):
+    return p.get("vendor_id") == user.user_id or (p.get("vendor_id") == MASTER_ID and user.is_admin)
+
+
+def ensure_active(user):
+    if getattr(user, "suspended", False):
+        raise HTTPException(403, "Akun Anda dibekukan (suspended) oleh MatShop.id")
+
+
 async def notify(user_id, title, body, link):
     await db().notifications.insert_one({"id": uuid.uuid4().hex, "user_id": user_id, "title": title, "body": body,
                                          "link": link, "read": False, "created_at": now_iso()})
@@ -157,8 +181,8 @@ async def load(project_id: str):
 async def get_project(project_id: str, request: Request):
     user = await user_of(request)
     p = await load(project_id)
-    is_client, is_vendor = p["client_id"] == user.user_id, p.get("vendor_id") == user.user_id
-    if not (is_client or is_vendor or p["status"] == "open" or user.is_admin):
+    is_client, is_vendor = p["client_id"] == user.user_id, is_executor(p, user)
+    if not (is_client or is_vendor or p["status"] == "open" or user.is_admin or p.get("original_vendor_id") == user.user_id):
         raise HTTPException(403, "Proyek sudah ditangani vendor lain")
     if is_client or user.is_admin:
         bids = await db().project_bids.find({"project_id": project_id}, {"_id": 0}).sort("amount", 1).to_list(100)
@@ -166,7 +190,8 @@ async def get_project(project_id: str, request: Request):
         bids = await db().project_bids.find({"project_id": project_id, "vendor_id": user.user_id}, {"_id": 0}).to_list(1)
         if not is_vendor:
             p.pop("phone", None)
-    return {**p, "bids": bids, "viewer": "client" if is_client else "vendor" if is_vendor else "bidder"}
+    viewer = "client" if is_client else "vendor" if is_vendor else "admin" if user.is_admin else "bidder"
+    return {**p, "bids": bids, "viewer": viewer}
 
 
 @router.post("/projects/{project_id}/bids")
@@ -175,6 +200,7 @@ async def submit_bid(project_id: str, body: BidIn, request: Request):
     p = await load(project_id)
     if p["client_id"] == user.user_id:
         raise HTTPException(400, "Tidak bisa menawar proyek sendiri")
+    ensure_active(user)
     if user.verification_status != "VERIFIED":
         raise HTTPException(403, "Profil usaha Anda harus diverifikasi oleh tim MatShop.id sebelum dapat mengajukan penawaran.")
     if p["status"] != "open":
@@ -226,8 +252,10 @@ async def accept_bid(project_id: str, bid_id: str, request: Request):
 
 async def milestone_action(project_id: str, key: str, user, actor: str, expect: str, new: str, note: str, extra=None):
     p = await load(project_id)
-    if (actor == "client" and p["client_id"] != user.user_id) or (actor == "vendor" and p.get("vendor_id") != user.user_id):
+    if (actor == "client" and p["client_id"] != user.user_id) or (actor == "vendor" and not is_executor(p, user)):
         raise HTTPException(403, "Tidak berhak")
+    if actor == "vendor":
+        ensure_active(user)
     idx = next((i for i, m in enumerate(p["milestones"]) if m["key"] == key), None)
     if idx is None:
         raise HTTPException(404, "Milestone tidak ditemukan")
@@ -239,7 +267,7 @@ async def milestone_action(project_id: str, key: str, user, actor: str, expect: 
     sets = {f"milestones.{idx}.status": new, f"milestones.{idx}.{new}_at": now_iso(), **(extra or {})}
     sets = {k.replace("{i}", str(idx)): v for k, v in sets.items()}
     released_all = new == "released" and all(x["status"] == "released" for j, x in enumerate(p["milestones"]) if j != idx)
-    sets["status"] = "completed" if released_all else "in_progress"
+    sets["status"] = "completed" if released_all else ("internal_takeover" if p["status"] == "internal_takeover" else "in_progress")
     await db().custom_projects.update_one({"project_id": project_id}, {"$set": sets, "$push": {"timeline": event(note)}})
     return await load(project_id)
 
@@ -319,3 +347,60 @@ async def reject_project(project_id: str, body: ReviewIn, request: Request):
     if len(body.note.strip()) < 5:
         raise HTTPException(400, "Alasan penolakan wajib diisi")
     return await review(project_id, request, False, body.note)
+
+
+@router.post("/projects/{project_id}/progress")
+async def add_progress(project_id: str, body: ProgressIn, request: Request):
+    user = await user_of(request)
+    p = await load(project_id)
+    if not is_executor(p, user):
+        raise HTTPException(403, "Hanya pelaksana proyek")
+    ensure_active(user)
+    if p["status"] not in ACTIVE:
+        raise HTTPException(400, "Proyek tidak sedang dikerjakan")
+    if body.percent < (p.get("progress_percent") or 0):
+        raise HTTPException(400, "Persentase tidak boleh turun dari laporan sebelumnya")
+    entry = {"id": uuid.uuid4().hex[:8], **body.model_dump(), "by": p["vendor_name"], "at": now_iso()}
+    await db().custom_projects.update_one({"project_id": project_id}, {
+        "$set": {"progress_percent": body.percent}, "$push": {"progress_updates": entry}})
+    await notify(p["client_id"], f"Progres proyek {body.percent}%", f"{p['vendor_name']}: {body.note}", f"/custom-project/{project_id}")
+    return await load(project_id)
+
+
+@router.get("/admin/active-projects")
+async def admin_active(request: Request):
+    await require_admin(request)
+    return await db().custom_projects.find({"status": {"$in": [*ACTIVE, "completed"]}}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+
+@router.post("/admin/projects/{project_id}/takeover")
+async def takeover(project_id: str, body: TakeoverIn, request: Request):
+    admin = await require_admin(request)
+    p = await load(project_id)
+    if p["status"] not in ("awarded", "in_progress"):
+        raise HTTPException(400, "Takeover hanya untuk proyek yang sedang berjalan")
+    ms = p["milestones"]
+    held = sum(m["amount"] for m in ms if m["status"] in ("held", "submitted"))
+    unpaid = sum(m["amount"] for m in ms if m["status"] == "pending")
+    released = sum(m["amount"] for m in ms if m["status"] == "released")
+    for m in ms:
+        if m["status"] != "released":
+            m["assigned_to"] = MASTER_NAME
+            if m["status"] == "submitted":
+                m["status"] = "held"
+    info = {"reason": body.reason, "by": admin.name, "at": now_iso(), "from_vendor_id": p["vendor_id"],
+            "from_vendor_name": p["vendor_name"], "escrow_transferred": held, "remaining_unpaid": unpaid,
+            "released_to_previous": released}
+    await db().custom_projects.update_one({"project_id": project_id}, {"$set": {
+        "status": "internal_takeover", "original_vendor_id": p["vendor_id"], "original_vendor_name": p["vendor_name"],
+        "vendor_id": MASTER_ID, "vendor_name": MASTER_NAME, "milestones": ms, "takeover": info},
+        "$push": {"timeline": event(f"INTERNAL_TAKEOVER oleh {MASTER_NAME}. Sisa dana escrow Rp {held:,.0f} dialihkan. Alasan: {body.reason}".replace(",", "."))}})
+    await db().escrow_ledger.insert_one({"id": uuid.uuid4().hex, "project_id": project_id, "type": "takeover_reallocation",
+                                         "from": p["vendor_id"], "to": MASTER_ID, "amount": held, "at": now_iso()})
+    await db().users.update_one({"user_id": p["vendor_id"]}, {"$set": {
+        "suspended": True, "suspended_reason": f"Wanprestasi proyek {project_id}: {body.reason}", "suspended_at": now_iso()}})
+    await notify(p["client_id"], "Garansi Penyelesaian Proyek MatShop",
+                 f"Proyek {p['title']} kini diambil alih {MASTER_NAME}. MatShop.id menjamin penyelesaian proyek; sisa dana escrow tetap aman.",
+                 f"/custom-project/{project_id}")
+    await notify(p["vendor_id"], "Akun dibekukan", f"Akun Anda dibekukan karena wanprestasi pada proyek {p['title']}.", "/dashboard")
+    return await load(project_id)

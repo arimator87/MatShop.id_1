@@ -101,6 +101,11 @@ export default function Dashboard() {
         </div>
         {role === "contractor_buyer" && <Link to="/katalog?tab=all" data-testid="dash-explore-button" className="h-11 px-6 rounded-full bg-amber-600 text-white font-semibold inline-flex items-center">Eksplorasi Material</Link>}
       </div>
+      {user.suspended && (
+        <div className="mb-8 rounded-xl border-2 border-red-300 bg-red-50 p-5 text-sm text-red-900" data-testid="suspended-banner">
+          <b>Akun dibekukan (suspended).</b> {user.suspended_reason} — Anda tidak dapat mengajukan penawaran atau melanjutkan proyek. Hubungi tim MatShop.id.
+        </div>
+      )}
       {role !== "contractor_buyer" && <SellerStats key={role} />}
       <RoleTabs role={role} />
     </div>

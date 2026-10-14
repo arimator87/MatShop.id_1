@@ -35,6 +35,8 @@ DEMO_USERS = [
      "primary_role": "supplier_vendor", "enabled_roles": ["supplier_vendor", "contractor_buyer"]},
     {"user_id": "user_demo_designer", "email": "desainer@matshop.id", "name": "Studio Ruang Arsitek",
      "primary_role": "designer_creator", "enabled_roles": ["designer_creator", "contractor_buyer"]},
+    {"user_id": "user_master_workshop", "email": "workshop@matshop.id", "name": "Master Workshop MatShop",
+     "primary_role": "supplier_vendor", "enabled_roles": ["supplier_vendor"], "verification_status": "VERIFIED"},
     {"user_id": "user_demo_admin", "email": "admin@matshop.id", "name": "Admin Mediasi MatShop",
      "primary_role": "contractor_buyer", "enabled_roles": ["contractor_buyer"], "is_admin": True},
 ]

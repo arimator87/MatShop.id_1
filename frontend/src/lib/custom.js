@@ -21,6 +21,7 @@ export const PROJECT_STATUS = {
   open: { code: "OPEN_FOR_BID", label: "Menerima Penawaran", cls: "bg-amber-100 text-amber-800" },
   awarded: { code: "AWARDED", label: "Pemenang Dipilih · Menunggu DP", cls: "bg-blue-100 text-blue-800" },
   in_progress: { code: "IN_PROGRESS", label: "Dalam Pengerjaan", cls: "bg-blue-100 text-blue-800" },
+  internal_takeover: { code: "INTERNAL_TAKEOVER", label: "Diambil Alih Master Workshop MatShop", cls: "bg-red-100 text-red-700" },
   completed: { code: "COMPLETED", label: "Selesai · Serah Terima", cls: "bg-green-100 text-green-800" },
   cancelled: { code: "CANCELLED", label: "Dibatalkan", cls: "bg-slate-100 text-slate-600" },
 };
