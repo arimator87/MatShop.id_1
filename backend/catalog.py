@@ -138,7 +138,7 @@ async def update_category(key: str, body: CategoryIn, request: Request):
 @router.delete("/admin/categories/{key}")
 async def delete_category(key: str, request: Request):
     await require_admin(request)
-    if await db().listings.count_documents({"category": key}):
+    if await db().listings.count_documents({"category": key, "is_active": True}):
         raise HTTPException(400, "Kategori masih dipakai produk — nonaktifkan saja")
     if not (await db().categories.delete_one({"key": key})).deleted_count:
         raise HTTPException(404, "Kategori tidak ditemukan")

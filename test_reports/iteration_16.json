@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 16: Tested catalog categories & tabs admin management (backend + frontend). All 9 pytest cases passed. Full E2E flow validated: create category -> create tab -> supplier creates listing -> tab filter returns it -> deactivate category -> new listing rejected (400) -> existing listing still has category_label -> inactive category hidden from /api/meta/categories -> reorder & delete tab works -> delete used category returns 400. Non-admin returns 403. Frontend: /katalog shows 6 seeded tabs (all/plywood/spc/wallpanel/services/assets). Admin /admin -> admin-tab-catalog -> catalog-manager renders with 15 category rows across material/service/asset columns, 6 tab rows, usage counts shown ('2 produk'), tab-dialog & category-dialog open with all expected testids present.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/admin/categories/{key}", "issue": "Uses db.listings.count_documents({'category':key}) WITHOUT is_active filter. This means categories referenced only by soft-deleted (is_active=False) listings cannot be hard-deleted — must either filter is_active=True (align with usage count in /admin/catalog which uses is_active=True) or purge inactive listings. Resulted in leftover TEST category being blocked from deletion during cleanup."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_catalog_iter16.py",
+    "/app/test_reports/pytest/iter16.xml"
+  ],
+  "action_items": [
+    "(Optional) In catalog.py delete_category, filter listings by is_active=True to make deletion consistent with the usage count shown in /admin/catalog; otherwise soft-deleted listings permanently block category deletion."
+  ],
+  "critical_code_review_comments": [
+    "catalog.py:141 delete_category counts ALL listings for the category (including is_active=False), but admin_catalog usage count on line 111 filters is_active=True — this inconsistency can confuse admins (sees usage=0 but delete returns 400).",
+    "catalog.py:36 refresh() is called synchronously after each admin write but mutates module-level dicts (LABELS/ACTIVE/TAB_FILTERS). Under concurrent writes could race — acceptable for admin-only writes but worth noting.",
+    "server.py:375 validate_listing uses `body.type not in catalog.ACTIVE` which checks dict keys (TYPES). OK but slightly non-obvious."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_catalog_iter16.py"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% testids present"},
+  "test_credentials": "demo endpoints: POST /api/auth/demo {role: admin|supplier_vendor|contractor_buyer}",
+  "seed_data_creation": "All test categories/tabs/listings cleaned up. Also purged 242 leftover TEST-prefixed listings from prior iterations. Verified seeded 6 tabs & 15 categories intact; original tab order restored.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Catalog admin UI uses testids: admin-tab-catalog, catalog-manager, category-manager, category-column-{type}, category-add-{type}, category-row-{key}, category-usage-{key}, category-{key}-{up|down|toggle|edit|delete}, category-dialog, category-label-input, category-icon-input, category-dialog-save, tab-add, tab-list, tab-row-{key}, tab-{key}-*, tab-dialog, tab-label-input, tab-type-{type}, tab-cat-{key}, tab-icon-input, tab-dialog-save. Backend endpoints under /api/admin/catalog, /api/admin/categories, /api/admin/tabs, /api/admin/catalog/reorder. Public: /api/catalog/tabs, /api/catalog/categories, /api/meta/categories, /api/listings?tab=KEY. Preview URL REACT_APP_BACKEND_URL=https://matshop-3.preview.emergentagent.com.",
+  "rca of the issue": "No critical issue found. Minor consistency gap in delete_category usage filter noted above."
+}
