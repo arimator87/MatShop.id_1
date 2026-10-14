@@ -9,6 +9,7 @@ import { MilestoneTracker } from "@/components/custom/MilestoneTracker";
 import { MilestoneAction } from "@/components/custom/MilestoneAction";
 import { BidForm } from "@/components/custom/BidForm";
 import { BidCard } from "@/components/custom/BidCard";
+import { CompareBar, CompareDialog } from "@/components/custom/BidCompare";
 import { ProjectProgress } from "@/components/custom/ProjectProgress";
 import { ProgressUpdateForm } from "@/components/custom/ProgressUpdateForm";
 import { ReviewForm } from "@/components/ReviewForm";
@@ -19,6 +20,8 @@ const Info = ({ icon: Icon, children }) => <div className="flex items-center gap
 export default function CustomProjectDetail() {
   const { projectId } = useParams();
   const [p, setP] = useState(null);
+  const [cmp, setCmp] = useState([]);
+  const [showCmp, setShowCmp] = useState(false);
   const load = useCallback(() => api.get(`/custom/projects/${projectId}`).then(({ data }) => setP(data)).catch(() => setP(false)), [projectId]);
   useEffect(() => { load(); const t = setInterval(load, 20000); return () => clearInterval(t); }, [load]);
 
@@ -108,7 +111,14 @@ export default function CustomProjectDetail() {
       {p.bids?.length > 0 && (
         <section className="space-y-4" data-testid="project-bids">
           <h2 className="font-heading text-xl font-semibold">{p.viewer === "client" ? `Penawaran Masuk (${p.bids.length})` : "Penawaran Anda"}</h2>
-          {p.bids.map((b) => <BidCard key={b.bid_id} bid={b} canAccept={p.viewer === "client" && p.status === "open"} onAccept={accept} />)}
+          {p.bids.map((b) => {
+            const canCmp = p.viewer === "client" && p.status === "open" && p.bids.length > 1;
+            const on = cmp.includes(b.bid_id);
+            return <BidCard key={b.bid_id} bid={b} canAccept={p.viewer === "client" && p.status === "open"} onAccept={accept}
+              compare={canCmp && { checked: on, disabled: !on && cmp.length >= 3, onToggle: () => setCmp(on ? cmp.filter((x) => x !== b.bid_id) : [...cmp, b.bid_id]) }} />;
+          })}
+          {cmp.length > 0 && <CompareBar n={cmp.length} onOpen={() => setShowCmp(true)} onClear={() => setCmp([])} />}
+          {showCmp && <CompareDialog bids={p.bids.filter((b) => cmp.includes(b.bid_id))} onClose={() => setShowCmp(false)} onAccept={(b) => { setShowCmp(false); accept(b); }} />}
         </section>
       )}
       {p.viewer === "client" && p.status === "open" && !p.bids.length && (

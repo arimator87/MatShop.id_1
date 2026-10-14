@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { rupiah } from "@/lib/format";
 import { RatingBadge, TopRatedBadge } from "@/components/Stars";
 
-export const BidCard = ({ bid, canAccept, onAccept }) => {
+export const BidCard = ({ bid, canAccept, onAccept, compare }) => {
   const [open, setOpen] = useState(false);
   const badge = { accepted: "bg-green-100 text-green-800", rejected: "bg-slate-100 text-slate-500", pending: "bg-amber-100 text-amber-800" }[bid.status];
   return (
@@ -19,7 +19,12 @@ export const BidCard = ({ bid, canAccept, onAccept }) => {
           </div>
           <div className="text-xs text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {bid.duration_days} hari pengerjaan · {bid.rab_items.length} item RAB</div>
         </div>
-        <div className="text-right">
+        <div className="text-right space-y-1">
+          {compare && (
+            <label className={`inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer ${compare.disabled ? "opacity-40 cursor-not-allowed" : ""}`}>
+              <input type="checkbox" checked={compare.checked} disabled={compare.disabled} onChange={compare.onToggle} className="accent-amber-600 w-4 h-4" data-testid={`bid-compare-${bid.bid_id}`} /> Bandingkan
+            </label>
+          )}
           <div className="font-heading text-xl font-bold" data-testid={`bid-amount-${bid.bid_id}`}>{rupiah(bid.amount)}</div>
           <span className={`text-[11px] px-2 py-0.5 rounded-full ${badge}`}>{{ accepted: "Diterima", rejected: "Tidak dipilih", pending: "Menunggu" }[bid.status]}</span>
         </div>

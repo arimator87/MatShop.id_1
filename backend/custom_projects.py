@@ -258,9 +258,12 @@ async def get_project(project_id: str, request: Request):
         if not is_vendor:
             p.pop("phone", None)
     meta = await reviews.badges([b["vendor_id"] for b in bids])
+    verified = {u["user_id"]: u.get("verification_status") for u in await db().users.find(
+        {"user_id": {"$in": [b["vendor_id"] for b in bids]}}, {"_id": 0, "user_id": 1, "verification_status": 1}).to_list(100)}
     for b in bids:
         m = meta[b["vendor_id"]]
         b["vendor_rating"], b["vendor_review_count"], b["vendor_top_rated"] = m["rating"], m["review_count"], m["top_rated"]
+        b["vendor_verified"] = verified.get(b["vendor_id"]) == "VERIFIED"
     inv = invitations(p)
     if not (is_client or user.is_admin):
         inv = [i for i in inv if i["vendor_id"] == user.user_id]
