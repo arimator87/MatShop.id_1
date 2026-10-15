@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Check, Gavel, LayoutDashboard, LogOut, Package } from "lucide-react";
+import { Check, Gavel, LayoutDashboard, LogOut, Package, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -7,9 +7,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_META } from "@/lib/format";
+import { installApp, usePWA } from "@/lib/pwa";
 
 export const UserMenu = () => {
   const { user, logout, switchRole } = useAuth();
+  const { standalone } = usePWA();
   const navigate = useNavigate();
   const active = ROLE_META[user.active_role];
 
@@ -56,6 +58,11 @@ export const UserMenu = () => {
         <DropdownMenuItem data-testid="menu-dashboard" onClick={() => navigate("/dashboard")} className="gap-2 cursor-pointer">
           <LayoutDashboard className="w-4 h-4" /> Dashboard
         </DropdownMenuItem>
+        {!standalone && (
+          <DropdownMenuItem data-testid="menu-install-app" onClick={installApp} className="gap-2 cursor-pointer">
+            <Smartphone className="w-4 h-4" /> Install Aplikasi
+          </DropdownMenuItem>
+        )}
         {user.is_admin && (
           <DropdownMenuItem data-testid="menu-admin" onClick={() => navigate("/admin")} className="gap-2 cursor-pointer text-amber-700">
             <Gavel className="w-4 h-4" /> Panel Mediasi Admin

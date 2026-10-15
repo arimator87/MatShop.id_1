@@ -9,6 +9,20 @@ export const IMAGE_SLOTS = {
     url: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200" },
 };
 
+export const PWA_DEFAULT = {
+  app_name: "MatShop.id",
+  short_name: "MatShop",
+  banner_title: "Install aplikasi MatShop.id",
+  banner_text: "Belanja material & pantau proyek lebih cepat langsung dari layar HP.",
+};
+
+export const PWA_FIELDS = [
+  ["app_name", "Nama aplikasi (saat install)", 40],
+  ["short_name", "Nama pendek (di bawah ikon HP)", 12],
+  ["banner_title", "Judul banner install", 60],
+  ["banner_text", "Teks banner install", 120],
+];
+
 export const HERO_DEFAULT = {
   eyebrow: "Marketplace B2B · B2C · Designer",
   title: "Material, desain, dan aset 3D",
@@ -43,4 +57,5 @@ export const SIZE_GUIDE = [
   ["Foto Hero Material", "600 × 600 px (1:1)", "Tekstur/close-up material"],
   ["Banner Custom Furniture", "1000 × 800 px (5:4)", "Foto interior/kitchen set"],
   ["Halaman Login", "1200 × 1600 px (3:4)", "Hanya tampil di desktop"],
+  ["Ikon Aplikasi HP (PWA)", "512 × 512 px (1:1), PNG", "Persegi penuh tanpa sudut membulat; logo di tengah, sisakan margin ±10%"],
 ];

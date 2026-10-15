@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { api, errMsg, imgSrc } from "@/lib/api";
 import { useSite } from "@/context/SiteContext";
 import { ImagesField } from "@/components/ListingForm";
-import { HERO_DEFAULT, HERO_FIELDS, IMAGE_SLOTS, SECTION_LABELS, SIZE_GUIDE } from "@/lib/site";
+import { HERO_DEFAULT, HERO_FIELDS, IMAGE_SLOTS, PWA_DEFAULT, PWA_FIELDS, SECTION_LABELS, SIZE_GUIDE } from "@/lib/site";
 
 const Card = ({ title, desc, children, testid }) => (
   <section className="bg-white rounded-xl border border-slate-200 p-6 space-y-4" data-testid={testid}>
@@ -68,14 +68,15 @@ export const SiteManager = () => {
   const site = useSite();
   const [images, setImages] = useState({});
   const [hero, setHero] = useState({});
+  const [pwa, setPwa] = useState({});
   const [sections, setSections] = useState(site.sections);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setImages(site.raw.images || {}); setHero(site.raw.hero || {}); setSections(site.sections); }, [site.raw]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setImages(site.raw.images || {}); setHero(site.raw.hero || {}); setPwa(site.raw.pwa || {}); setSections(site.sections); }, [site.raw]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = async () => {
     setBusy(true);
     try {
-      await api.put("/admin/site-settings", { images, hero, sections });
+      await api.put("/admin/site-settings", { images, hero, sections, pwa });
       await site.reload();
       toast.success("Tampilan beranda diperbarui");
     } catch (e) { toast.error(errMsg(e)); }
@@ -102,6 +103,26 @@ export const SiteManager = () => {
       </Card>
       <Card title="Urutan & Visibilitas Section Beranda" desc="Atur posisi section dan strip iklan sponsor; matikan saklar untuk menyembunyikan." testid="site-sections">
         <SectionOrder items={sections} setItems={setSections} />
+      </Card>
+      <Card title="Aplikasi HP (PWA)" desc="Nama, ikon, dan banner ajakan install di smartphone. Kosongkan untuk memakai bawaan." testid="site-pwa">
+        <div className="grid sm:grid-cols-[160px_1fr] gap-6">
+          <div className="space-y-2">
+            <img src={pwa.icon ? imgSrc(pwa.icon) : "/icons/icon-512.png"} alt="" className="w-32 h-32 rounded-[28px] object-cover border" data-testid="site-pwa-icon-preview" />
+            <div className="text-xs font-mono text-amber-700">Ukuran: 512 × 512 px PNG</div>
+            <ImagesField images={[]} onChange={(x) => x[0] && setPwa({ ...pwa, icon: x[0] })} testid="site-pwa-icon" />
+            {pwa.icon && <button type="button" onClick={() => setPwa({ ...pwa, icon: "" })} data-testid="site-pwa-icon-reset" className="text-xs text-slate-600 inline-flex items-center gap-1 hover:text-red-600"><RotateCcw className="w-3.5 h-3.5" /> Ikon bawaan</button>}
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4 content-start">
+            {PWA_FIELDS.map(([k, label, max]) => (
+              <label key={k} className="block space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">{label} <span className="text-xs text-slate-400">(maks. {max})</span></span>
+                <input value={pwa[k] || ""} maxLength={max} placeholder={PWA_DEFAULT[k]} onChange={(e) => setPwa({ ...pwa, [k]: e.target.value })} data-testid={`site-pwa-${k}`}
+                  className="w-full h-11 px-4 rounded-lg border border-slate-300 outline-none focus:border-amber-600 text-sm" />
+              </label>
+            ))}
+            <p className="sm:col-span-2 text-xs text-slate-500">Perubahan nama/ikon berlaku untuk instalasi baru; pengguna yang sudah install akan ter-update otomatis oleh browser dalam beberapa hari.</p>
+          </div>
+        </div>
       </Card>
       <SizeGuide />
       <div className="sticky bottom-4 z-10 flex justify-end">

@@ -9,6 +9,7 @@ import { Footer } from "@/components/Footer";
 import { AuthCallback } from "@/components/AuthCallback";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PromoPopup } from "@/components/promo/PromoPopup";
+import { InstallBanner } from "@/components/InstallBanner";
 import Home from "@/pages/Home";
 import Catalog from "@/pages/Catalog";
 import ListingDetail from "@/pages/ListingDetail";
@@ -58,6 +59,7 @@ function AppRouter() {
       </main>
       <Footer />
       <PromoPopup />
+      <InstallBanner />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+from fastapi.responses import JSONResponse
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
@@ -249,7 +250,26 @@ class SectionIn(BaseModel):
 class SiteIn(BaseModel):
     images: dict = {}
     hero: dict = {}
+    pwa: dict = {}
     sections: List[SectionIn] = []
+
+
+PWA_DEFAULT = {"app_name": "MatShop.id", "short_name": "MatShop", "banner_title": "Install aplikasi MatShop.id",
+               "banner_text": "Belanja material & pantau proyek lebih cepat langsung dari layar HP."}
+
+
+@router.get("/pwa/manifest.json")
+async def pwa_manifest():
+    doc = await db().site_settings.find_one({"_id": "home"}, {"_id": 0, "pwa": 1}) or {}
+    p = {**PWA_DEFAULT, **(doc.get("pwa") or {})}
+    icons = ([{"src": p["icon"], "sizes": "512x512", "type": "image/png", "purpose": "any"}] if p.get("icon") else [
+        {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}])
+    body = {"name": p["app_name"], "short_name": p["short_name"], "description": "Marketplace material, desain & custom furniture",
+            "id": "/", "start_url": "/?source=pwa", "scope": "/", "display": "standalone", "orientation": "portrait",
+            "background_color": "#F8F7F4", "theme_color": "#1E242B", "lang": "id", "icons": icons}
+    return JSONResponse(body, media_type="application/manifest+json", headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/site-settings")
@@ -264,6 +284,7 @@ async def save_site_settings(body: SiteIn, request: Request):
     if body.sections and (sorted(keys) != sorted(SECTION_KEYS)):
         raise HTTPException(400, "Daftar section tidak valid")
     doc = {"images": {k: str(v) for k, v in body.images.items() if v}, "hero": {k: str(v)[:300] for k, v in body.hero.items() if v},
+           "pwa": {k: str(v)[:300] for k, v in body.pwa.items() if k in PWA_DEFAULT or k == "icon" if v},
            "sections": [x.model_dump() for x in body.sections], "updated_by": admin.name, "updated_at": now_iso()}
     await db().site_settings.update_one({"_id": "home"}, {"$set": doc}, upsert=True)
     return doc
